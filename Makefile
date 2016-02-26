@@ -21,7 +21,7 @@ build: build-awscli
 build-awscli:
 	@echo "running make build-awscli"
 	docker build -t awscli-build -f Dockerfile .
-	docker run --rm -v /var/run:/var/run -v $(MOUNT):/go/src/$(PROJ) --entrypoint=/bin/sh -i awscli-awsbuild -c "godeps restore && make lint && make lint-check && make test/awscli && make docker/awscli "
+	docker run --rm -v /var/run:/var/run -v $(MOUNT):/go/src/$(PROJ) --entrypoint=/bin/sh -i awscli-build -c "godep restore && make lint && make lint-check && make test/awscli && make docker/awscli "
 
 docker/awscli: $(SRC) config Dockerfile.awscli
 	@echo "running make docker/awscli"
@@ -49,7 +49,7 @@ distclean:
 	@echo "running make distclean"
 	rm -rf ./tmp ./certs
 	docker rm awscli-build run-awscli
-	docker rmi bin/awscli-go awscli-go
+	docker rmi bin/awscli awscli-go
 
 interactive:
 	@echo "running make build-awscli"
@@ -69,7 +69,7 @@ run-awscli: config
 
 test:
 	@echo "running test"
-	docker run -it --rm -v /var/run:/var/run -v $(MOUNT):/go/src/$(PROJ) --entrypoint=/bin/sh -i awscli-go -c "godeps restore && make test/awscli"
+	docker run -it --rm -v /var/run:/var/run -v $(MOUNT):/go/src/$(PROJ) --entrypoint=/bin/sh -i awscli-build -c "godep restore && make test/awscli"
 
 test/awscli: $(SRC)
 	@echo "running test/awscli"
