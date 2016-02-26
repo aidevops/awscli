@@ -1,6 +1,6 @@
 #!/bin/sh
 
-export GOPATH=$PWD/../../../
+export GOPATH=$PWD/../../../../
 export PATH=$GOPATH/bin:$PATH
 
 sudo apk add --update go && \

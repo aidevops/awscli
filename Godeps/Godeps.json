@@ -1,0 +1,5 @@
+{
+	"ImportPath": "github.com/johnt337/awscli",
+	"GoVersion": "go1.5",
+	"Deps": []
+}
