@@ -4,7 +4,7 @@ general:
 
 machine:
   environment:
-    IMPORT_PATH: "github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
+    # IMPORT_PATH: "github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
     GO15VENDOREXPERIMENT: 1
 
 dependencies:
@@ -12,14 +12,14 @@ dependencies:
     - go get github.com/tools/godep
 
   override:
-    - mkdir -p "$GOPATH/src/$IMPORT_PATH"
-    - rsync -azC --delete ./ "$GOPATH/src/$IMPORT_PATH/"
+    # - mkdir -p "$GOPATH/src/$IMPORT_PATH"
+    # - rsync -azC --delete ./ "$GOPATH/src/$IMPORT_PATH/"
 
 test:
-  pre:
-    - "go vet ./... | grep -v vendor"
+  # pre:
+  #   - "go vet ./... | grep -v vendor"
   post:
     - make bin/awscli
 
-  override:
-    - "godep go test ./... | grep -v vendor"
+  # override:
+  #   - "godep go test ./... | grep -v vendor"
