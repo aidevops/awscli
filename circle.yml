@@ -2,8 +2,25 @@ general:
   artifacts:
     - "bin/awscli"
 
+machine:
+  environment:
+    IMPORT_PATH: "github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
+    GO15VENDOREXPERIMENT: 1
+
+dependencies:
+  pre:
+    - go get github.com/tools/godep
+
+  override:
+    - mkdir -p "$GOPATH/src/$IMPORT_PATH"
+    - rsync -azC --delete ./ "$GOPATH/src/$IMPORT_PATH/"
+
 test:
+  pre:
+    - go vet ./... | grep -v vendor
   post:
     - godep save
     - make bin/awscli
 
+  override:
+    - godep go test ./... | grep -v vendor
