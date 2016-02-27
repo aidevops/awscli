@@ -19,7 +19,6 @@ test:
   pre:
     - go vet ./... | grep -v vendor
   post:
-    - godep save
     - make bin/awscli
 
   override:
