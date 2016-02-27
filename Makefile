@@ -21,7 +21,7 @@ build: build-awscli
 build-awscli:
 	@echo "running make build-awscli"
 	docker build -t awscli-build -f Dockerfile .
-	docker run --rm -v /var/run:/var/run -v $(MOUNT):/go/src/$(PROJ) --entrypoint=/bin/sh -i awscli-build -c "godep restore && make lint && make lint-check && make test/awscli && make docker/awscli "
+	GO15VENDOREXPERIMENT=1 docker run --rm -v /var/run:/var/run -v $(MOUNT):/go/src/$(PROJ) --entrypoint=/bin/sh -i awscli-build -c "godep restore && make lint && make lint-check && make test/awscli && make docker/awscli "
 
 docker/awscli: $(SRC) config Dockerfile.awscli
 	@echo "running make docker/awscli"

@@ -2,6 +2,7 @@
 
 export GOPATH=$PWD/../../../../
 export PATH=$GOPATH/bin:$PATH
+export GO15VENDOREXPERIMENT=1
 
 sudo apk add --update go && \
   go get github.com/tools/godep && \
@@ -10,4 +11,4 @@ sudo apk add --update go && \
   go get -u github.com/golang/lint/golint && \
   go get -u github.com/aws/aws-sdk-go && \
   go get golang.org/x/tools/cmd/cover && \
-  godep save -r
+  godep save github.com/johnt337/awscli 
