@@ -34,6 +34,8 @@ Options:
 // Run -
 func (c *ECRCommand) Run(args []string) int {
 	var (
+		account string
+		region  string
 		format  string
 		level   string
 		logfile string
@@ -43,6 +45,8 @@ func (c *ECRCommand) Run(args []string) int {
 	cmdFlags := flag.NewFlagSet("ecr", flag.ContinueOnError)
 	cmdFlags.Usage = func() { c.UI.Output(c.Help()) }
 
+	cmdFlags.StringVar(&account, "account", "", "AWS account #.")
+	cmdFlags.StringVar(&region, "region", "", "AWS region.")
 	cmdFlags.StringVar(&format, "format", "text", "Format response as either json or regular text.")
 	cmdFlags.StringVar(&level, "level", "info", "logging level: error, warn, info, or debug")
 	cmdFlags.StringVar(&logfile, "log", "/tmp/cloudconfig.log", "logfile path")
@@ -72,7 +76,7 @@ func (c *ECRCommand) Run(args []string) int {
 
 	log := logger.NewCLILogger(level, logfile, "ecr", format, c.UI)
 
-	awscli.ECRInfo()
+	awscli.ECRInfo(account)
 
 	log.Flush()
 

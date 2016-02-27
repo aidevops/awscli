@@ -17,7 +17,7 @@ GO15VENDOREXPERIMENT ?= 1
 GIT_COMMIT=$(shell git rev-parse HEAD)
 GIT_DIRTY=$(shell test -n "`git status --porcelain`" && echo "+CHANGES" || true)
 
-build: build-awscli
+build: godeps build-awscli
 
 build-awscli:
 	@echo "running make build-awscli"
@@ -32,13 +32,19 @@ docker/awscli: $(SRC) config Dockerfile.awscli
 
 bin/awscli: $(SRC)
 	@echo "statically linking awscli"
-	CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-w -X main.GitCommit=$(GIT_COMMIT)$(GIT_DIRTY)' -o bin/awscli cmd/awscli/*.go
+	CGO_ENABLED=0 GOOS=linux godep go build -a -installsuffix cgo -ldflags '-w -X main.GitCommit=$(GIT_COMMIT)$(GIT_DIRTY)' -o bin/awscli cmd/awscli/*.go
 
 bootstrap:
 	ginkgo bootstrap
 
 bootstrap-test:
 	@cd ${DIR} && ginkgo bootstrap && cd ~-
+
+godeps:
+	@echo "running godep"
+	godep save ./...
+	#godep go build ./...
+	#godep go test $(MAIN)
 
 clean:
 	@echo "running make clean"
@@ -74,10 +80,10 @@ test:
 
 test/awscli: $(SRC)
 	@echo "running test/awscli"
-	go test $(TESTS) $(ARGS)
+	godep go test $(TESTS) $(ARGS)
 
 test-cover: $(SRC)
-	@go test $(COVER) -coverprofile=coverage.ou
-	@go tool cover -html=coverage.out
+	@godep go test $(COVER) -coverprofile=coverage.ou
+	@godep go tool cover -html=coverage.out
 
-.PHONY: clean test test/awscli run-bin/awscli interactive bootstrap bootstrap-test lint lint-check test-cover
+.PHONY: clean test test/awscli run-bin/awscli interactive bootstrap bootstrap-test lint lint-check test-cover godeps

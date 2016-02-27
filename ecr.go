@@ -10,17 +10,18 @@ import (
 )
 
 // ECRInfo -
-func ECRInfo() {
+func ECRInfo(registryID string) {
 	svc := ecr.New(session.New())
 
 	params := &ecr.DescribeRepositoriesInput{
-		MaxResults: aws.Int64(1),
-		NextToken:  aws.String("NextToken"),
-		RegistryId: aws.String("RegistryId"),
-		RepositoryNames: []*string{
-			aws.String("RepositoryName"), // Required
-			// More values...
-		},
+		MaxResults: aws.Int64(100),
+		// NextToken:  aws.String("NextToken"),
+		// RegistryId: aws.String("RegistryId"),
+		RegistryId: aws.String(registryID),
+		// RepositoryNames: []*string{
+		// 	aws.String("awscli"), // Required
+		// 	// More values...
+		// },
 	}
 	resp, err := svc.DescribeRepositories(params)
 
