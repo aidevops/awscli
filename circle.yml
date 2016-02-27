@@ -17,9 +17,9 @@ dependencies:
 
 test:
   pre:
-    - go vet ./... | grep -v vendor
+    - "go vet ./... | grep -v vendor"
   post:
     - make bin/awscli
 
   override:
-    - godep go test ./... | grep -v vendor
+    - "godep go test ./... | grep -v vendor"
