@@ -62,6 +62,6 @@ func (c *ECSCommand) Run(args []string) int {
 }
 
 // Synopsis -
-func (c *EC2Command) Synopsis() string {
+func (c *ECSCommand) Synopsis() string {
 	return "ecs....."
 }

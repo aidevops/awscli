@@ -11,4 +11,6 @@ sudo apk add --update go && \
   go get -u github.com/golang/lint/golint && \
   go get -u github.com/aws/aws-sdk-go && \
   go get golang.org/x/tools/cmd/cover && \
-  godep save github.com/johnt337/awscli 
+  go get github.com/mitchellh/cli && \
+  go get golang.org/x/sys/unix && \
+  godep save ./...
