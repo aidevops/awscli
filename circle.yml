@@ -1,0 +1,9 @@
+general:
+  artifacts:
+    - "bin/awscli"
+
+test:
+  post:
+    - godep save github.com/johnt337/awscli
+    - make bin/awscli
+
