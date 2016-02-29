@@ -30,12 +30,14 @@ func main() {
 		account string
 		region  string
 		version bool
+		login   bool
 	)
 
 	flag.StringVar(&account, "account", "", "AWS account #. E.g. -account='1234556790123'")
 	flag.StringVar(&region, "region", "us-east-1", "AWS region. E.g. -region=us-east-1")
 	flag.BoolVar(&verbose, "verbose", false, "be more verbose.....")
 	flag.BoolVar(&version, "version", false, "print version and exit")
+	flag.BoolVar(&login, "login", false, "docker login on your behalf, otherwise return login string")
 	flag.Parse()
 
 	if version == true {
@@ -52,7 +54,7 @@ func main() {
 
 	debugf("[DEBUG]: using region: %s", region)
 	debugf("[DEBUG]: generating login credentials...\n")
-	token, endpoint, expires, err := Login(account, region, verbose)
+	token, endpoint, expires, err := Login(account, region, verbose, login)
 
 	if err != nil {
 		fmt.Printf("[ERROR]: generating login credentials: %s\n", err)
@@ -72,39 +74,45 @@ func main() {
 	debugf("[DEBUG]: creds length: %d\n", len(creds))
 	debugf("[DEBUG]: generating login command\n")
 	args := []string{"login", "-u", creds[0], "-p", creds[1], "-e", "none", *endpoint}
-	debugf("[DEBUG]: executing command: docker '%s'\n", strings.Join(args, " "))
-	cmd := exec.Command("docker", args...)
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		fmt.Printf("[ERROR]: failed to open stdout\n")
-		os.Exit(252)
-	}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		fmt.Printf("[ERROR]: failed to open stderr\n")
-		os.Exit(251)
-	}
 
-	// start the command after having set up the pipes
-	if err = cmd.Start(); err != nil {
-		fmt.Printf("[ERROR]: failed to start command\n")
-		os.Exit(250)
-	}
+	if login == true {
+		debugf("[DEBUG]: executing command: 'docker %s'\n", strings.Join(args, " "))
+		cmd := exec.Command("docker", args...)
+		stdout, err := cmd.StdoutPipe()
+		if err != nil {
+			fmt.Printf("[ERROR]: failed to open stdout: %s\n", err)
+			os.Exit(252)
+		}
+		stderr, err := cmd.StderrPipe()
+		if err != nil {
+			fmt.Printf("[ERROR]: failed to open stderr: %s\n", err)
+			os.Exit(251)
+		}
 
-	// collect both pipes together
-	multi := io.MultiReader(stdout, stderr)
-	// read command's stdout & stderr line by line
-	in := bufio.NewScanner(multi)
+		// start the command after having set up the pipes
+		if err = cmd.Start(); err != nil {
+			fmt.Printf("[ERROR]: failed to start command: %s\n", err)
+			os.Exit(250)
+		}
 
-	for in.Scan() {
-		line := in.Text()
-		fmt.Println(line)
-	}
+		// collect both pipes together
+		multi := io.MultiReader(stdout, stderr)
+		// read command's stdout & stderr line by line
+		in := bufio.NewScanner(multi)
 
-	err = cmd.Wait()
-	if err != nil {
-		fmt.Printf("[ERROR]: failed while waiting for command to complete\n")
-		os.Exit(249)
+		for in.Scan() {
+			line := in.Text()
+			fmt.Println(line)
+		}
+
+		err = cmd.Wait()
+		if err != nil {
+			fmt.Printf("[ERROR]: failed while waiting for command to complete: %s\n", err)
+			os.Exit(249)
+		}
+	} else {
+		fmt.Print("docker ")
+		fmt.Println(strings.Join(args, " "))
 	}
 
 	// success!!!
@@ -113,7 +121,7 @@ func main() {
 }
 
 // Login - login to aws ecr registry
-func Login(registryID, region string, verbose bool) (token, endpoint *string, expires *time.Time, err error) {
+func Login(registryID, region string, verbose, login bool) (token, endpoint *string, expires *time.Time, err error) {
 
 	debugf("[DEBUG]: creating new session...\n")
 	svc := ecr.New(session.New(), &aws.Config{Region: aws.String(region)})
