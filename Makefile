@@ -12,6 +12,7 @@ COVER ?=
 SRC   := $(shell find . -name '*.go')
 MOUNT ?= $(shell pwd)
 GO15VENDOREXPERIMENT ?= 1
+REGISTRY ?= johnt337
 
 # Get the git commit
 GIT_COMMIT=$(shell git rev-parse HEAD)
@@ -42,15 +43,17 @@ docker/awscli: $(SRC) config Dockerfile.awscli
 	@echo "running make docker/awscli"
 	make bin/awscli
 	[ -d ./tmp ] || mkdir ./tmp && chmod 4777 ./tmp
-	docker build -t bin/awscli -f Dockerfile.awscli .
+	docker build -t $(REGISTRY)/awscli -f Dockerfile.awscli .
 
 docker/ecr_login: $(SRC) config Dockerfile.ecr_login
 	@echo "running make docker/ecr_login"
 	make bin/ecr_login
 	[ -d ./tmp ] || mkdir ./tmp && chmod 4777 ./tmp
 	[ -d ./certs ] || cp -a /etc/ssl/certs .
-	docker build -t bin/ecr_login:$(ECR_VERSION) -f Dockerfile.ecr_login .
-	docker tag -f bin/ecr_login:$(ECR_VERSION) bin/ecr_login:$(ECR_TAG)
+	docker build -t $(REGISTRY)/ecr_login:$(ECR_VERSION) -f Dockerfile.ecr_login .
+	docker build -t $(REGISTRY)/ecr_login:$(ECR_VERSION)-docker -f ecr_login_plus_docker.Dockerfile .
+	docker tag -f $(REGISTRY)/ecr_login:$(ECR_VERSION) $(REGISTRY)/ecr_login:$(ECR_TAG)
+
 
 bin: $(SRC)
 	@make bin/awscli
@@ -86,7 +89,7 @@ distclean:
 	@echo "running make distclean"
 	rm -rf ./tmp ./certs
 	docker rm awscli-build run-awscli
-	docker rmi bin/awscli bin/ecr_login awscli-go
+	docker rmi bin/awscli bin/ecr_login awscli-go $(REGISTRY)/awscli $(REGISTRY)/ecr_login
 
 interactive:
 	@echo "running make build-awscli"
