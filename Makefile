@@ -17,6 +17,10 @@ GO15VENDOREXPERIMENT ?= 1
 GIT_COMMIT=$(shell git rev-parse HEAD)
 GIT_DIRTY=$(shell test -n "`git status --porcelain`" && echo "+CHANGES" || true)
 
+# ECR tagging
+ECR_TAG=latest
+ECR_VERSION=$(shell grep -E 'Version =' ./cmd/ecr_login/version.go | awk '{print$$NF}' | sed 's@"@@g')
+
 build: godeps build-all
 
 build-all:
@@ -44,7 +48,8 @@ docker/ecr_login: $(SRC) config Dockerfile.ecr_login
 	@echo "running make docker/ecr_login"
 	make bin/ecr_login
 	[ -d ./tmp ] || mkdir ./tmp && chmod 4777 ./tmp
-	docker build -t bin/ecr_login -f Dockerfile.ecr_login .
+	docker build -t bin/ecr_login:$(ECR_VERSION) -f Dockerfile.ecr_login .
+	docker tag -f bin/ecr_login:$(ECR_VERSION) bin/ecr_login:$(ECR_TAG)
 
 bin: $(SRC)
 	@make bin/awscli

@@ -1,64 +1,63 @@
+// Package main - ecr_login application
 package main
 
+// import - import our dependencies
 import (
 	"encoding/base64"
 	"flag"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ecr"
 )
 
-// Help -
-func Help() string {
-	helpText := `
-Usage: awscli ecr [options] name
-  
-  ECR.....
+// Unit - this application's name
+const Unit = "ecr_login"
 
-Options:
-  
-  -verbose=true  Display additional information from 
-                 behind the scenes.
-`
-	return strings.TrimSpace(helpText)
-}
+// verbose - control debug output
+var verbose bool
 
+// main - log us in...
 func main() {
 	var (
 		account string
 		region  string
-		verbose bool
+		version bool
 	)
 
-	if verbose == true {
-		fmt.Println("[DEBUG]: starting up...")
+	flag.StringVar(&account, "account", "", "AWS account #. E.g. -account='1234556790123'")
+	flag.StringVar(&region, "region", "us-east-1", "AWS region. E.g. -region=us-east-1")
+	flag.BoolVar(&verbose, "verbose", false, "be more verbose.....")
+	flag.BoolVar(&version, "version", false, "print version and exit")
+	flag.Parse()
+
+	if version == true {
+		fmt.Println(versionInfo())
+		os.Exit(0)
 	}
 
-	cmdFlags := flag.NewFlagSet("ecr_login", flag.ContinueOnError)
-	cmdFlags.Usage = func() { Help() }
-	cmdFlags.StringVar(&account, "account", "", "AWS account #.")
-	cmdFlags.StringVar(&region, "region", "us-east-1", "AWS region.")
-	cmdFlags.BoolVar(&verbose, "verbose", false, "verbose")
-
-	if verbose == true {
-		fmt.Println("[DEBUG]: logging in...")
+	debugf("[DEBUG]: using account: %s\n", account)
+	debugf("[DEBUG]: checking length: %d\n", len(account))
+	if account == "" || len(account) < 12 {
+		fmt.Printf("ecr_login: missing or invalid account length: -account='1234556790123', received: '%s'\n", account)
+		os.Exit(255)
 	}
+
+	debugf("[DEBUG]: using region: %s", region)
+	debugf("[DEBUG]: logging in...\n")
 	token, err := Login(account, region, verbose)
 	if err != nil {
-		fmt.Errorf("ecr_login: login error: %s\n", err)
+		fmt.Printf("ecr_login: login error: %s\n", err)
+		os.Exit(254)
 	}
 
-	if verbose == true {
-		fmt.Println("[DEBUG]: decoding creds...")
-	}
+	debugf("[DEBUG]: decoding creds...\n")
 	decoded, err := base64.StdEncoding.DecodeString(token)
 	if err != nil {
-		fmt.Errorf("ecr_login: decode error: %s\n", err)
-		os.Exit(255)
+		fmt.Printf("ecr_login: decode error: %s\n", err)
+		os.Exit(253)
 	}
 
 	fmt.Println(string(decoded))
@@ -66,17 +65,13 @@ func main() {
 
 }
 
-// login - login to aws ecr registry
+// Login - login to aws ecr registry
 func Login(registryID, region string, verbose bool) (token string, err error) {
 
-	if verbose {
-		fmt.Println("[DEBUG]: creating new session...")
-	}
+	debugf("[DEBUG]: creating new session...\n")
 	svc := ecr.New(session.New(), &aws.Config{Region: aws.String(region)})
 
-	if verbose {
-		fmt.Println("[DEBUG]: creating auth token input...")
-	}
+	debugf("[DEBUG]: creating auth token input...\n")
 	params := &ecr.GetAuthorizationTokenInput{
 		RegistryIds: []*string{
 			aws.String(registryID), // Required
@@ -84,24 +79,34 @@ func Login(registryID, region string, verbose bool) (token string, err error) {
 		},
 	}
 
-	if verbose {
-		fmt.Println("[DEBUG]: fetching auth token...")
-	}
+	debugf("[DEBUG]: fetching auth token...\n")
 	resp, err := svc.GetAuthorizationToken(params)
 
 	if err != nil {
 		// Print the error, cast err to awserr.Error to get the Code and
 		// Message from an error.
-		fmt.Errorf("ecr_login: %s\n", err.Error())
+		fmt.Printf("ecr_login: %s\n", err.Error())
 		return token, err
 	}
 
-	if verbose {
-		fmt.Println("[DEBUG]: formatting and returning login token...")
-	}
+	debugf("[DEBUG]: formatting and returning login token...\n")
 
 	// Pretty-print the response data.
 	fmt.Println(resp)
 	token = fmt.Sprintf("%s", resp)
 	return token, nil
+}
+
+// helper functions....
+
+// debugf - print to stdout if verbose is enabled....
+func debugf(format string, args ...interface{}) {
+	if verbose == true {
+		fmt.Printf(format, args...)
+	}
+}
+
+// versionInfo - vendoring version info
+func versionInfo() string {
+	return fmt.Sprintf("%s v%s.%s (%s)", Unit, Version, VersionPrerelease, GitCommit)
 }
