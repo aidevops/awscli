@@ -1,8 +1,7 @@
 FROM scratch
 
-ENV VERSION ${VERSION:-0.0.1}
-
-ADD bin/ecr_login        /bin/ecr_login
+ADD bin/ecr_login /bin/ecr_login
+ADD certs /etc/ssl/certs
 
 ENTRYPOINT [ "/bin/ecr_login"]
 CMD []

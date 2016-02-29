@@ -48,6 +48,7 @@ docker/ecr_login: $(SRC) config Dockerfile.ecr_login
 	@echo "running make docker/ecr_login"
 	make bin/ecr_login
 	[ -d ./tmp ] || mkdir ./tmp && chmod 4777 ./tmp
+	[ -d ./certs ] || cp -a /etc/ssl/certs .
 	docker build -t bin/ecr_login:$(ECR_VERSION) -f Dockerfile.ecr_login .
 	docker tag -f bin/ecr_login:$(ECR_VERSION) bin/ecr_login:$(ECR_TAG)
 

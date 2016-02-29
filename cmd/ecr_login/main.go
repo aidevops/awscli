@@ -3,10 +3,15 @@ package main
 
 // import - import our dependencies
 import (
+	"bufio"
 	"encoding/base64"
 	"flag"
 	"fmt"
+	"io"
 	"os"
+	"os/exec"
+	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -46,27 +51,69 @@ func main() {
 	}
 
 	debugf("[DEBUG]: using region: %s", region)
-	debugf("[DEBUG]: logging in...\n")
-	token, err := Login(account, region, verbose)
+	debugf("[DEBUG]: generating login credentials...\n")
+	token, endpoint, expires, err := Login(account, region, verbose)
+
 	if err != nil {
-		fmt.Printf("ecr_login: login error: %s\n", err)
+		fmt.Printf("[ERROR]: generating login credentials: %s\n", err)
 		os.Exit(254)
 	}
 
+	debugf("[DEBUG]: credentials valid until: %s...\n", expires.String())
 	debugf("[DEBUG]: decoding creds...\n")
-	decoded, err := base64.StdEncoding.DecodeString(token)
+	decoded, err := base64.StdEncoding.DecodeString(*token)
 	if err != nil {
-		fmt.Printf("ecr_login: decode error: %s\n", err)
+		fmt.Printf("[ERROR]: decode error: %s\n", err)
 		os.Exit(253)
 	}
 
-	fmt.Println(string(decoded))
+	creds := strings.Split(string(decoded), ":")
+
+	debugf("[DEBUG]: creds length: %d\n", len(creds))
+	debugf("[DEBUG]: generating login command\n")
+	args := []string{"login", "-u", creds[0], "-p", creds[1], "-e", "none", *endpoint}
+	debugf("[DEBUG]: executing command: docker '%s'\n", strings.Join(args, " "))
+	cmd := exec.Command("docker", args...)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		fmt.Printf("[ERROR]: failed to open stdout\n")
+		os.Exit(252)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		fmt.Printf("[ERROR]: failed to open stderr\n")
+		os.Exit(251)
+	}
+
+	// start the command after having set up the pipes
+	if err = cmd.Start(); err != nil {
+		fmt.Printf("[ERROR]: failed to start command\n")
+		os.Exit(250)
+	}
+
+	// collect both pipes together
+	multi := io.MultiReader(stdout, stderr)
+	// read command's stdout & stderr line by line
+	in := bufio.NewScanner(multi)
+
+	for in.Scan() {
+		line := in.Text()
+		fmt.Println(line)
+	}
+
+	err = cmd.Wait()
+	if err != nil {
+		fmt.Printf("[ERROR]: failed while waiting for command to complete\n")
+		os.Exit(249)
+	}
+
+	// success!!!
 	os.Exit(0)
 
 }
 
 // Login - login to aws ecr registry
-func Login(registryID, region string, verbose bool) (token string, err error) {
+func Login(registryID, region string, verbose bool) (token, endpoint *string, expires *time.Time, err error) {
 
 	debugf("[DEBUG]: creating new session...\n")
 	svc := ecr.New(session.New(), &aws.Config{Region: aws.String(region)})
@@ -85,16 +132,19 @@ func Login(registryID, region string, verbose bool) (token string, err error) {
 	if err != nil {
 		// Print the error, cast err to awserr.Error to get the Code and
 		// Message from an error.
-		fmt.Printf("ecr_login: %s\n", err.Error())
-		return token, err
+		fmt.Printf("[ERROR]: %s\n", err.Error())
+		return token, endpoint, expires, err
 	}
 
 	debugf("[DEBUG]: formatting and returning login token...\n")
 
 	// Pretty-print the response data.
-	fmt.Println(resp)
-	token = fmt.Sprintf("%s", resp)
-	return token, nil
+	debugf("[DEBUG]: raw aws response: %s\n", resp)
+
+	token = resp.AuthorizationData[0].AuthorizationToken
+	endpoint = resp.AuthorizationData[0].ProxyEndpoint
+	expires = resp.AuthorizationData[0].ExpiresAt
+	return token, endpoint, expires, nil
 }
 
 // helper functions....
