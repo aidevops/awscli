@@ -1,4 +1,4 @@
-package command
+package main
 
 import (
 	"encoding/base64"
@@ -8,17 +8,20 @@ import (
 
 	"github.com/mitchellh/cli"
 
-	"github.com/johnt337/awscli"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/ecr"
+
 	"github.com/johnt337/awscli/logger"
 )
 
-// ECRCommand -
-type ECRCommand struct {
+// ECRLogin -
+type ECRLogin struct {
 	UI cli.Ui
 }
 
 // Help -
-func (c *ECRCommand) Help() string {
+func (c *ECRLogin) Help() string {
 	helpText := `
 Usage: awscli ecr [options] name
   
@@ -32,8 +35,7 @@ Options:
 	return strings.TrimSpace(helpText)
 }
 
-// Run -
-func (c *ECRCommand) Run(args []string) int {
+func main(args []string) {
 	var (
 		account string
 		region  string
@@ -57,23 +59,15 @@ func (c *ECRCommand) Run(args []string) int {
 		return 1
 	}
 
+	ecr := args[0]
+
 	args = cmdFlags.Args()
 	if len(args) < 1 {
 		c.UI.Error("arguments must be specified.")
 		c.UI.Error("")
 		c.UI.Error(c.Help())
 		return 1
-	} else if len(args) > 1 {
-		c.UI.Error("Too many command line arguments.")
-		c.UI.Error("")
-		c.UI.Error(c.Help())
-		return 1
 	}
-
-	ecr := args[0]
-
-	c.UI.Output(fmt.Sprintf("Setting ecr to '%s'! Verbosity enabled: %#v",
-		ecr, verbose))
 
 	log := logger.NewCLILogger(level, logfile, "ecr", format, c.UI)
 
@@ -88,9 +82,45 @@ func (c *ECRCommand) Run(args []string) int {
 	log.Flush()
 
 	return 0
+
 }
 
-// Synopsis -
-func (c *ECRCommand) Synopsis() string {
-	return "ecr....."
+// Help -
+func (c *ECRCommand) Help() string {
+	helpText := `
+Usage: awscli ecr [options] name
+  
+  ECR.....
+
+Options:
+  
+  -verbose=true  Display additional information from 
+                 behind the scenes.
+`
+	return strings.TrimSpace(helpText)
+}
+
+// login - login to aws ecr registry
+func login(registryID string) (token string, err error) {
+	svc := ecr.New(session.New())
+
+	params := &ecr.GetAuthorizationTokenInput{
+		RegistryIds: []*string{
+			aws.String(registryID), // Required
+			// More values...
+		},
+	}
+	resp, err := svc.GetAuthorizationToken(params)
+
+	if err != nil {
+		// Print the error, cast err to awserr.Error to get the Code and
+		// Message from an error.
+		fmt.Println(err.Error())
+		return token, err
+	}
+
+	// Pretty-print the response data.
+	fmt.Println(resp)
+	token = fmt.Sprintf("%s", resp)
+	return token, nil
 }

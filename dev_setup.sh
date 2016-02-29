@@ -1,8 +1,9 @@
 #!/bin/sh
 
-export GOPATH=$PWD/../../../../
-export PATH=$GOPATH/bin:$PATH
-export GO15VENDOREXPERIMENT=1
+. $PWD/go_path.env
+#export GOPATH=$PWD/../../../../
+#export PATH=$GOPATH/bin:$PATH
+#export GO15VENDOREXPERIMENT=1
 
 sudo apk add --update go && \
   go get github.com/tools/godep && \
