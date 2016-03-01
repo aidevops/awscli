@@ -3,15 +3,17 @@ package main
 
 // import - import our dependencies
 import (
-	"bufio"
-	"encoding/base64"
+	// "bufio"
+	// "encoding/base64"
 	"flag"
 	"fmt"
-	"io"
+	// "io"
 	"os"
-	"os/exec"
+	// "os/exec"
+	"regexp"
+	"strconv"
 	"strings"
-	"time"
+	// "time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -24,20 +26,26 @@ const Unit = "ec2_tag"
 // verbose - control debug output
 var verbose bool
 
+// for handling tags
+var tag map[string]string
+
 // main - log us in...
 func main() {
 	var (
-		account string
-		region  string
-		version bool
-		login   bool
+		account   string
+		region    string
+		resources string
+		tags      string
+		version   bool
 	)
 
+	var empty string
 	flag.StringVar(&account, "account", "", "AWS account #. E.g. -account='1234556790123'")
 	flag.StringVar(&region, "region", "us-east-1", "AWS region. E.g. -region=us-east-1")
 	flag.BoolVar(&verbose, "verbose", false, "be more verbose.....")
 	flag.BoolVar(&version, "version", false, "print version and exit")
-	flag.BoolVar(&login, "login", false, "docker login on your behalf, otherwise return login string")
+	flag.StringVar(&resources, "resources", empty, "-resources 'one two three four five'")
+	flag.StringVar(&tags, "tags", empty, "-tags 'foo=bar,bar=foo,hello=world'")
 	flag.Parse()
 
 	if version == true {
@@ -46,113 +54,72 @@ func main() {
 	}
 
 	debugf("[DEBUG]: using account: %s\n", account)
-	debugf("[DEBUG]: checking length: %d\n", len(account))
 	if account == "" || len(account) < 12 {
 		fmt.Printf("ecr_login: missing or invalid account length: -account='1234556790123', received: '%s'\n", account)
 		os.Exit(255)
 	}
 
-	debugf("[DEBUG]: using region: %s", region)
-	debugf("[DEBUG]: generating login credentials...\n")
-	token, endpoint, expires, err := Login(account, region, verbose, login)
+	debugf("[DEBUG]: using resource(s): %s\n", resources)
+	if resources == "" || len(resources) < 10 {
+		fmt.Printf("ecr_login: missing or invalid resource(s): -resources='i-86424106 i-864241.. i-864242..', received: '%s'\n", resources)
+		os.Exit(255)
+	}
 
-	if err != nil {
-		fmt.Printf("[ERROR]: generating login credentials: %s\n", err)
+	debugf("[DEBUG]: using region: %s\n", region)
+
+	t := ToMap(tags)
+	debugf("[DEBUG]: raw input: %s\n", tags)
+	for k, v := range t {
+		debugf("[DEBUG]: mapped: Key=%s,Value=%s\n", k, v)
+	}
+	ok, err := Tag(account, region, verbose, ToSlice(resources), t)
+	if !ok {
+		fmt.Printf("[ERROR]: failed to tag: %s", err)
 		os.Exit(254)
 	}
-
-	debugf("[DEBUG]: credentials valid until: %s...\n", expires.String())
-	debugf("[DEBUG]: decoding creds...\n")
-	decoded, err := base64.StdEncoding.DecodeString(*token)
-	if err != nil {
-		fmt.Printf("[ERROR]: decode error: %s\n", err)
-		os.Exit(253)
-	}
-
-	creds := strings.Split(string(decoded), ":")
-
-	debugf("[DEBUG]: creds length: %d\n", len(creds))
-	debugf("[DEBUG]: generating login command\n")
-	args := []string{"login", "-u", creds[0], "-p", creds[1], "-e", "none", *endpoint}
-
-	if login == true {
-		debugf("[DEBUG]: executing command: 'docker %s'\n", strings.Join(args, " "))
-		cmd := exec.Command("docker", args...)
-		stdout, err := cmd.StdoutPipe()
-		if err != nil {
-			fmt.Printf("[ERROR]: failed to open stdout: %s\n", err)
-			os.Exit(252)
-		}
-		stderr, err := cmd.StderrPipe()
-		if err != nil {
-			fmt.Printf("[ERROR]: failed to open stderr: %s\n", err)
-			os.Exit(251)
-		}
-
-		// start the command after having set up the pipes
-		if err = cmd.Start(); err != nil {
-			fmt.Printf("[ERROR]: failed to start command: %s\n", err)
-			os.Exit(250)
-		}
-
-		// collect both pipes together
-		multi := io.MultiReader(stdout, stderr)
-		// read command's stdout & stderr line by line
-		in := bufio.NewScanner(multi)
-
-		for in.Scan() {
-			line := in.Text()
-			fmt.Println(line)
-		}
-
-		err = cmd.Wait()
-		if err != nil {
-			fmt.Printf("[ERROR]: failed while waiting for command to complete: %s\n", err)
-			os.Exit(249)
-		}
-	} else {
-		fmt.Print("docker ")
-		fmt.Println(strings.Join(args, " "))
-	}
-
 	// success!!!
 	os.Exit(0)
 
 }
 
 // Login - login to aws ecr registry
-func Login(registryID, region string, verbose, login bool) (token, endpoint *string, expires *time.Time, err error) {
+func Tag(account, region string, verbose bool, resources []string, tags map[string]string) (ok bool, err error) {
 
 	debugf("[DEBUG]: creating new session...\n")
-	svc := ecr.New(session.New(), &aws.Config{Region: aws.String(region)})
+	svc := ec2.New(session.New(), &aws.Config{Region: aws.String(region)})
 
-	debugf("[DEBUG]: creating auth token input...\n")
-	params := &ecr.GetAuthorizationTokenInput{
-		RegistryIds: []*string{
-			aws.String(registryID), // Required
-			// More values...
-		},
+	debugf("[DEBUG]: creating tag(s) input...\n")
+	debugf("[DEBUG]: total tag pair(s): %d\n", len(tags))
+	counter := 0
+	ec2Tags := make([]*ec2.Tag, len(tags))
+	for key, value := range tags {
+		debugf("[DEBUG]: processing tag #%d: '%s'='%s'\n", counter, key, value)
+		ec2Tags[counter] = &ec2.Tag{
+			Key:   aws.String(key),
+			Value: aws.String(value),
+		}
+		counter++
 	}
 
-	debugf("[DEBUG]: fetching auth token...\n")
-	resp, err := svc.GetAuthorizationToken(params)
+	ec2Resources := make([]*string, len(resources))
+	for pos, resource := range resources {
+		debugf("[DEBUG]: tagging resource: '%s'\n", resource)
+		ec2Resources[pos] = &resource
+	}
+
+	resp, err := svc.CreateTags(&ec2.CreateTagsInput{
+		Resources: ec2Resources,
+		Tags:      ec2Tags,
+	})
+
+	debugf("[DEBUG]: response: %v\n", resp)
 
 	if err != nil {
-		// Print the error, cast err to awserr.Error to get the Code and
-		// Message from an error.
-		fmt.Printf("[ERROR]: %s\n", err.Error())
-		return token, endpoint, expires, err
+		return false, fmt.Errorf("Could not create tags for instance(s): '%s': %s\n", strings.Join(resources, " "), err)
 	}
 
-	debugf("[DEBUG]: formatting and returning login token...\n")
-
-	// Pretty-print the response data.
-	debugf("[DEBUG]: raw aws response: %s\n", resp)
-
-	token = resp.AuthorizationData[0].AuthorizationToken
-	endpoint = resp.AuthorizationData[0].ProxyEndpoint
-	expires = resp.AuthorizationData[0].ExpiresAt
-	return token, endpoint, expires, nil
+	debugf("Successfully tagged instance(s) '%s'\n", strings.Join(resources, " "))
+	return true, nil
 }
 
 // helper functions....
@@ -167,4 +134,62 @@ func debugf(format string, args ...interface{}) {
 // versionInfo - vendoring version info
 func versionInfo() string {
 	return fmt.Sprintf("%s v%s.%s (%s)", Unit, Version, VersionPrerelease, GitCommit)
+}
+
+// ToMap - Convert options into a go map
+func ToMap(data string) map[string]string {
+	opts := make(map[string]string)
+	if data == "" {
+		return opts
+	}
+
+	// var sanitized string
+	// var err error
+	sanitized, err := strconv.Unquote(data)
+	if err != nil {
+		// fmt.Printf("failed to strip quotes: '%s'\n", err)
+		sanitized = data
+	}
+
+	re1, err := regexp.Compile(",")
+	if err != nil {
+		return opts
+	}
+	pairs := re1.Split(sanitized, -1)
+	for _, field := range pairs {
+		re2, err := regexp.Compile("=")
+		if err != nil {
+			return opts
+		}
+		pair := re2.Split(field, 2)
+		key := pair[0]
+		var val string
+		if len(pair) == 2 {
+			cleaned, err := strconv.Unquote(pair[1])
+			if err != nil {
+				val = pair[1]
+			} else {
+				val = cleaned
+			}
+		} else {
+			val = ""
+		}
+
+		opts[key] = val
+	}
+	return opts
+}
+
+// ToSlice - return a string of space delimited arguments as a []string slice
+func ToSlice(data string) (slice []string) {
+	if data == "" {
+		return slice
+	}
+
+	list := strings.Fields(data)
+	slice = make([]string, len(list))
+	for pos, field := range list {
+		slice[pos] = field
+	}
+	return slice
 }
