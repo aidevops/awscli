@@ -139,6 +139,19 @@ Is to use the aws-go-sdk and package static binaries. The above `aws_tag.sh` wil
 be augmented slightly to reflect the go binary flags. So far image size is 8 - 12 MB for
 solo images, alpine + docker variants gain about 40 MB. Build varies, you can build just the bin, the bin+container, or build-env+bin+container, also now includes a test framework, pulls are in the seconds.
 
+- Single Dockerfile
+
+```
+FROM scratch
+MAINTAINER John Torres <enfermo337@yahoo.com>
+
+ADD bin/ec2_tag /bin/ec2_tag
+ADD certs /etc/ssl/certs
+
+ENTRYPOINT [ "/bin/ec2_tag"]
+CMD []
+```
+
 See below for more detail.
 
 
