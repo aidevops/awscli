@@ -1,6 +1,7 @@
 package command
 
 import (
+	"encoding/base64"
 	"flag"
 	"fmt"
 	"strings"
@@ -77,7 +78,13 @@ func (c *ECRCommand) Run(args []string) int {
 	log := logger.NewCLILogger(level, logfile, "ecr", format, c.UI)
 
 	awscli.ECRInfo(account)
-
+	token, _ := awscli.ECRLogin(account)
+	decoded, err := base64.StdEncoding.DecodeString(token)
+	if err != nil {
+		fmt.Println("decode error:", err)
+		return 255
+	}
+	fmt.Println(string(decoded))
 	log.Flush()
 
 	return 0
