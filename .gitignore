@@ -1,1 +1,4 @@
 /bin/awscli
+/bin/ecr_login
+/bin/ec2_tag
+/certs
