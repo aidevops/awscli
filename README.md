@@ -10,6 +10,51 @@ The first attempt
 
 At delivering a containerized tag instance was in the range of ~300 - ~900 MB with debian/ubuntu, centos, fedora images.
 
+- The first part:
+
+``` Dockerfile
+# awscli - minimal container to run aws cli tools
+#
+# VERSION               0.0.1
+
+FROM ubuntu:14.04
+MAINTAINER John Torres <john.torres@pearson.com>
+
+# install chef, git, and wget; download and install chefdk, clean-up.
+RUN apt-get update && apt-get install -y curl unzip groff python && \
+    curl -s "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awscli-bundle.zip" && \
+    unzip awscli-bundle.zip -d /tmp/ && \
+    /tmp/awscli-bundle/install -i /usr/local/aws -b /usr/local/bin/aws && \
+    apt-get remove -y unzip curl && \
+    rm -rf /tmp/awscli-bundle* /var/lib/{apt,dpkg,cache,log}
+
+ENTRYPOINT ["/bin/bash"]
+
+WORKDIR /root
+
+```
+
+- The second part (overlay):
+
+``` Dockerfile
+# awstag - submit a tag and exit
+#
+# VERSION               0.0.1
+
+FROM aidevops/awscli:0.0.1
+MAINTAINER John Torres <john.torres@pearson.com>
+
+# install tagging script
+ADD bin/aws_tag.sh /etc/aws_tag.sh
+
+RUN chmod 500 /etc/aws_tag.sh
+
+ENTRYPOINT ["/etc/aws_tag.sh"]
+
+WORKDIR /root
+
+
+```
 
 My second attempt
 =================
