@@ -39,7 +39,7 @@ build-ecr_login:
 	GO15VENDOREXPERIMENT=$(GO15VENDOREXPERIMENT) docker run --rm -v /var/run:/var/run -v $(MOUNT):/go/src/$(PROJ) --entrypoint=/bin/sh -i awscli-build -c "godep restore && make lint && make lint-check && make test/units && make docker/ecr_login "
 
 
-docker/awscli: $(SRC) config Dockerfile.awscli
+docker/awscli: $(SRC) config awscli.Dockerfile
 	@echo "running make docker/awscli"
 	make bin/awscli
 	[ -d ./tmp ] || mkdir ./tmp && chmod 4777 ./tmp
@@ -80,8 +80,6 @@ bootstrap-test:
 godeps:
 	@echo "running godep"
 	godep save ./...
-	#godep go build ./...
-	#godep go test $(MAIN)
 
 clean:
 	@echo "running make clean"
@@ -107,8 +105,6 @@ lint-check: $(SRC)
 	@for pkg in $(LINTS); do \
 		echo -n "linting: $$pkg: "; \
 		echo "`golint $$pkg | wc -l | awk '{print$$NF}'` error(s)"; \
-	done
-	@for pkg in $(LINTS); do \
 		[ $$(golint $$pkg | wc -l | awk '{print$$NF}') -le 0 ] && true || false; \
 	done
 
