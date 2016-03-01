@@ -176,10 +176,10 @@ Quick Start:
 Running:
 -------
 
-- Run tag similar to aws ecr get-login --region <region> --registry-ids <id1,id2,id3> 
+- Run login similar to aws ecr get-login --region <region> --registry-ids <id1,id2,id3> 
 
   `eval $(docker run --rm -it johnt337/ecr_login -account=$AWS_REGISTRY_ID)`
 
-- Run tag with the bundled docker
+- Run login with the bundled docker
 
   `docker run --rm -it -v $HOME/.docker:/root/.docker -v /var/run/docker.sock:/var/run/docker.sock -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY johnt337/ecr_login -account=$AWS_REGISTRY_ID -login`
