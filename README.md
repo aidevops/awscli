@@ -1,5 +1,7 @@
 awscli
-------
+======
+
+[![Circle CI](https://circleci.com/gh/johnt337/pingdom.svg?style=svg)](https://circleci.com/gh/johnt337/awscli)
 
 ** THIS IS AN EXPERIMENT IN CONTAINER SIZE REDUCTION, USE AT YOUR OWN RISK. **
 Comparing image sizes and efficiency gained.....
