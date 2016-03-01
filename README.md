@@ -172,19 +172,27 @@ Quick Start:
 
   `cd github.com/johnt337/awscli awscli/src/github.com/johnt337/awscli`
 
-  `make build`
+  `make`
 
-- Build just the `ecr_login` util
+- Build the `ecr_login` util+container
 
   `cd github.com/johnt337/awscli awscli/src/github.com/johnt337/awscli`
 
   `make build-ecr_login`
 
-- Build just the `ec2_tag` util
+- Build the `ec2_tag` util+container
 
   `cd github.com/johnt337/awscli awscli/src/github.com/johnt337/awscli`
 
   `make build-ec2_tag`
+
+- Build the `ecr_login` util only
+
+  `make bin/ecr_login`
+
+- Build the `ec2_tag` util only
+
+  `make bin/ec2_tag`
 
 
 Running:
