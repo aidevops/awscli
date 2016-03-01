@@ -18,7 +18,11 @@ REGISTRY ?= johnt337
 GIT_COMMIT=$(shell git rev-parse HEAD)
 GIT_DIRTY=$(shell test -n "`git status --porcelain`" && echo "+CHANGES" || true)
 
-# ECR login
+# AWSCLI tagging
+AWSCLI_TAG=latest
+AWSCLI_VERSION=$(shell grep -E 'Version =' ./cmd/awscli/version.go | awk '{print$$NF}' | sed 's@"@@g')
+
+# ECR tagging
 ECR_TAG=latest
 ECR_VERSION=$(shell grep -E 'Version =' ./cmd/ecr_login/version.go | awk '{print$$NF}' | sed 's@"@@g')
 
@@ -32,6 +36,7 @@ build: godeps build-all
 build-all:
 	@make build-awscli
 	@make build-ecr_login
+	@make build-ec2_tag
 
 build-awscli:
 	@echo "running make build-awscli"
@@ -52,7 +57,8 @@ docker/awscli: $(SRC) config awscli.Dockerfile
 	@echo "running make docker/awscli"
 	make bin/awscli
 	[ -d ./tmp ] || mkdir ./tmp && chmod 4777 ./tmp
-	docker build -t $(REGISTRY)/awscli -f awscli.Dockerfile .
+	docker build -t $(REGISTRY)/awscli:$(AWSCLI_VERSION) -f awscli.Dockerfile .
+	docker tag -f $(REGISTRY)/awscli:$(AWSCLI_VERSION) $(REGISTRY)/awscli:$(AWSCLI_TAG)
 
 docker/ecr_login: $(SRC) config ecr_login.Dockerfile
 	@echo "running make docker/ecr_login"
@@ -72,6 +78,8 @@ docker/ec2_tag: $(SRC) config ec2_tag.Dockerfile
 	docker tag -f $(REGISTRY)/ec2_tag:$(EC2_TAG_VERSION) $(REGISTRY)/ec2_tag:$(EC2_TAG)
 
 docker/push:
+	docker push $(REGISTRY)/awscli:$(AWSCLI_VERSION)
+	docker push $(REGISTRY)/awscli:$(AWSCLI_TAG)
 	docker push $(REGISTRY)/ecr_login:$(ECR_VERSION)
 	docker push $(REGISTRY)/ecr_login:$(ECR_VERSION)-docker
 	docker push $(REGISTRY)/ecr_login:$(ECR_TAG)
@@ -94,7 +102,6 @@ bin/ecr_login: $(SRC)
 bin/ec2_tag: $(SRC)
 	@echo "statically linking ec2_tag"
 	CGO_ENABLED=0 GOOS=linux godep go build -a -installsuffix cgo -ldflags '-w -X main.GitCommit=$(GIT_COMMIT)$(GIT_DIRTY)' -o bin/ec2_tag cmd/ec2_tag/*.go
-
 
 bootstrap:
 	ginkgo bootstrap
