@@ -18,6 +18,10 @@ REGISTRY ?= johnt337
 GIT_COMMIT=$(shell git rev-parse HEAD)
 GIT_DIRTY=$(shell test -n "`git status --porcelain`" && echo "+CHANGES" || true)
 
+# AWSCLI tagging
+AWSCLI_TAG=latest
+AWSCLI_VERSION=$(shell grep -E 'Version =' ./cmd/awscli/version.go | awk '{print$$NF}' | sed 's@"@@g')
+
 # ECR tagging
 ECR_TAG=latest
 ECR_VERSION=$(shell grep -E 'Version =' ./cmd/ecr_login/version.go | awk '{print$$NF}' | sed 's@"@@g')
@@ -38,12 +42,12 @@ build-ecr_login:
 	docker build -t awscli-build -f Dockerfile .
 	GO15VENDOREXPERIMENT=$(GO15VENDOREXPERIMENT) docker run --rm -v /var/run:/var/run -v $(MOUNT):/go/src/$(PROJ) --entrypoint=/bin/sh -i awscli-build -c "godep restore && make lint && make lint-check && make test/units && make docker/ecr_login "
 
-
 docker/awscli: $(SRC) config awscli.Dockerfile
 	@echo "running make docker/awscli"
 	make bin/awscli
 	[ -d ./tmp ] || mkdir ./tmp && chmod 4777 ./tmp
-	docker build -t $(REGISTRY)/awscli -f awscli.Dockerfile .
+	docker build -t $(REGISTRY)/awscli:$(AWSCLI_VERSION) -f awscli.Dockerfile .
+	docker tag -f $(REGISTRY)/awscli:$(AWSCLI_VERSION) $(REGISTRY)/awscli:$(AWSCLI_TAG)
 
 docker/ecr_login: $(SRC) config ecr_login.Dockerfile
 	@echo "running make docker/ecr_login"
@@ -55,6 +59,8 @@ docker/ecr_login: $(SRC) config ecr_login.Dockerfile
 	docker tag -f $(REGISTRY)/ecr_login:$(ECR_VERSION) $(REGISTRY)/ecr_login:$(ECR_TAG)
 
 docker/push:
+	docker push $(REGISTRY)/awscli:$(AWSCLI_VERSION)
+	docker push $(REGISTRY)/awscli:$(AWSCLI_TAG)
 	docker push $(REGISTRY)/ecr_login:$(ECR_VERSION)
 	docker push $(REGISTRY)/ecr_login:$(ECR_VERSION)-docker
 	docker push $(REGISTRY)/ecr_login:$(ECR_TAG)
