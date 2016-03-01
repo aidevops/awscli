@@ -8,7 +8,7 @@ Comparing image sizes and efficiency gained.....
 The first attempt
 =================
 
-At delivering a containerized tag instance was in the range of ~300 - ~900 MB with debian/ubuntu, centos, fedora images.
+At delivering a containerized tag instance was in the range of ~300 - ~900 MB with debian/ubuntu, centos, fedora images. Build time anywhere from 10 - 20 minutes with push.
 
 - The first part:
 
@@ -59,7 +59,7 @@ WORKDIR /root
 My second attempt
 =================
 
-Looked something like this at around ~113 - ~150 MB with alpine. It included a base layer and a shell script tag overlay layer.
+Looked something like this at around ~113 - ~150 MB with alpine. It included a base layer and a shell script tag overlay layer. Build time anywhere from 2 - 5 minutes with push.
 
 
 
@@ -136,7 +136,8 @@ My third Attempt
 ================
 
 Is to use the aws-go-sdk and package static binaries. The above `aws_tag.sh` will
-be augmented slightly to reflect the go binary flags.
+be augmented slightly to reflect the go binary flags. So far image size is 8 - 12 MB for
+solo images, alpine + docker variants gain about 40 MB. Build varies, you can build just the bin, the bin+container, or build-env+bin+container, also now includes a test framework, pulls are in the seconds.
 
 See below for more detail.
 
