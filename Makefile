@@ -5,7 +5,7 @@ MAKEFLAGS  += --no-builtin-rules
 
 ARGS  ?= -v -race
 PROJ  ?= github.com/johnt337/awscli
-MAIN  ?= $(go list ./... | grep -v /vendor/)
+MAIN  ?= $(shell go list ./... | grep -v /vendor/)
 TESTS ?= $(MAIN) -cover
 LINTS ?= $(MAIN)
 COVER ?=
@@ -43,17 +43,21 @@ docker/awscli: $(SRC) config Dockerfile.awscli
 	@echo "running make docker/awscli"
 	make bin/awscli
 	[ -d ./tmp ] || mkdir ./tmp && chmod 4777 ./tmp
-	docker build -t $(REGISTRY)/awscli -f Dockerfile.awscli .
+	docker build -t $(REGISTRY)/awscli -f awscli.Dockerfile .
 
-docker/ecr_login: $(SRC) config Dockerfile.ecr_login
+docker/ecr_login: $(SRC) config ecr_login.Dockerfile
 	@echo "running make docker/ecr_login"
 	make bin/ecr_login
 	[ -d ./tmp ] || mkdir ./tmp && chmod 4777 ./tmp
 	[ -d ./certs ] || cp -a /etc/ssl/certs .
-	docker build -t $(REGISTRY)/ecr_login:$(ECR_VERSION) -f Dockerfile.ecr_login .
+	docker build -t $(REGISTRY)/ecr_login:$(ECR_VERSION) -f ecr_login.Dockerfile .
 	docker build -t $(REGISTRY)/ecr_login:$(ECR_VERSION)-docker -f ecr_login_plus_docker.Dockerfile .
 	docker tag -f $(REGISTRY)/ecr_login:$(ECR_VERSION) $(REGISTRY)/ecr_login:$(ECR_TAG)
 
+docker/push:
+	docker push $(REGISTRY)/ecr_login:$(ECR_VERSION)
+	docker push $(REGISTRY)/ecr_login:$(ECR_VERSION)-docker
+	docker push $(REGISTRY)/ecr_login:$(ECR_TAG)
 
 bin: $(SRC)
 	@make bin/awscli
@@ -89,19 +93,24 @@ distclean:
 	@echo "running make distclean"
 	rm -rf ./tmp ./certs
 	docker rm awscli-build run-awscli
-	docker rmi bin/awscli bin/ecr_login awscli-go $(REGISTRY)/awscli $(REGISTRY)/ecr_login
+	docker rmi bin/awscli bin/ecr_login awscli-build $(REGISTRY)/awscli $(REGISTRY)/ecr_login
 
 interactive:
-	@echo "running make build-awscli"
-	docker build -t awscli-go -f Dockerfile .
+	@echo "running make interactive build"
+	docker build -t awscli-build -f Dockerfile .
 	docker run -it --rm --name awscli-build -v /var/run:/var/run -v $(MOUNT):/go/src/$(PROJ) --entrypoint=/bin/bash -i awscli-build
 
 lint: $(SRC)
-	@golint $(LINTS)
+	@for pkg in $(LINTS); do echo "linting: $$pkg"; golint $$pkg; done
 
 lint-check: $(SRC)
-	@echo "`golint $(LINTS) | wc -l | awk '{print$$NF}'` error(s)"
-	@[ `golint $(LINTS) | wc -l | awk '{print$$NF}'` -le 0 ] && true || false
+	@for pkg in $(LINTS); do \
+		echo -n "linting: $$pkg: "; \
+		echo "`golint $$pkg | wc -l | awk '{print$$NF}'` error(s)"; \
+	done
+	@for pkg in $(LINTS); do \
+		[ $$(golint $$pkg | wc -l | awk '{print$$NF}') -le 0 ] && true || false; \
+	done
 
 run-awscli: config
 	@echo "running bin/awscli"
@@ -123,4 +132,7 @@ test-cover: $(SRC)
 	@godep go test $(COVER) -coverprofile=coverage.ou
 	@godep go tool cover -html=coverage.out
 
-.PHONY: clean test test/units run-bin/awscli run-bin/ecr_login interactive bootstrap bootstrap-test lint lint-check test-cover godeps
+vet: $(SRC)
+	@for pkg in $(LINTS); do echo "vetting: $$pkg"; godep go vet $$pkg; done
+
+.PHONY: clean test test/units run-bin/awscli run-bin/ecr_login interactive bootstrap bootstrap-test lint lint-check test-cover godeps docker/push
