@@ -210,8 +210,4 @@ Running:
 
 - Run tag similar to aws ec2 create-tags --resource xxxxxx --tags  
 
-  `eval $(docker run --rm -it johnt337/ecr_login -account=$AWS_REGISTRY_ID)`
-
-- Run login with the bundled docker
-
-  `docker run --rm -it -v $HOME/.docker:/root/.docker -v /var/run/docker.sock:/var/run/docker.sock -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY johnt337/ecr_login -account=$AWS_REGISTRY_ID -login`
+  `docker run -it --rm -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY johnt337/ec2_tag -verbose -account=$AWS_REGISTRY_ID -resources="i-XXXXXXXXX" -tags="hello=world,one=two,apple=orange,myfavorite.car=hello,docker=true,ecr=$DEFAULT_AWS_ECR"`
