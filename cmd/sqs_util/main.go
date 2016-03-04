@@ -1,4 +1,4 @@
-// Package main - ecr_login application
+// Package main - sqs_util application
 package main
 
 // import - import our dependencies
@@ -17,26 +17,24 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go/service/sqs"
 )
 
 // Unit - this application's name
-const Unit = "ec2_tag"
+const Unit = "sqs_util"
 
 // verbose - control debug output
 var verbose bool
 
-// for handling tags
-var tag map[string]string
-
 // main - log us in...
 func main() {
 	var (
-		account   string
-		region    string
-		resources string
-		tags      string
-		version   bool
+		account     string
+		region      string
+		destination string
+		message     string
+		verbose     bool
+		version     bool
 	)
 
 	var empty string
@@ -44,8 +42,8 @@ func main() {
 	flag.StringVar(&region, "region", "us-east-1", "AWS region. E.g. -region=us-east-1")
 	flag.BoolVar(&verbose, "verbose", false, "be more verbose.....")
 	flag.BoolVar(&version, "version", false, "print version and exit")
-	flag.StringVar(&resources, "resources", empty, "-resources 'one two three four five'")
-	flag.StringVar(&tags, "tags", empty, "-tags 'foo=bar,bar=foo,hello=world'")
+	flag.StringVar(&destination, "destination", "", "vault-register, consul-register, serviceN-register...")
+	flag.StringVar(&message, "message", empty, "-tags 'foo=bar,bar=foo,hello=world'")
 	flag.Parse()
 
 	if version == true {
@@ -55,26 +53,25 @@ func main() {
 
 	debugf("[DEBUG]: using account: %s\n", account)
 	if account == "" || len(account) < 12 {
-		fmt.Printf("ec2_tag: missing or invalid account length: -account='1234556790123', received: '%s'\n", account)
+		fmt.Printf("sqs_util: missing or invalid account length: -account='1234556790123', received: '%s'\n", account)
 		os.Exit(255)
 	}
 
-	debugf("[DEBUG]: using resource(s): %s\n", resources)
-	if resources == "" || len(resources) < 10 {
-		fmt.Printf("ec2_tag: missing or invalid resource(s): -resources='i-86424106 i-864241.. i-864242..', received: '%s'\n", resources)
+	debugf("[DEBUG]: using destination(s): %s\n", destination)
+	if destination == "" || len(destination) < 3 {
+		fmt.Printf("sqs_util: missing or invalid destination(s): -destination='some-fancy-queue..', received: '%s'\n", resources)
 		os.Exit(255)
 	}
 
 	debugf("[DEBUG]: using region: %s\n", region)
 
-	t := ToMap(tags)
-	debugf("[DEBUG]: raw input: %s\n", tags)
-	for k, v := range t {
+	debugf("[DEBUG]: raw input: %s\n", message)
+	for k, v := range m {
 		debugf("[DEBUG]: mapped: Key=%s,Value=%s\n", k, v)
 	}
-	ok, err := Tag(account, region, verbose, ToSlice(resources), t)
+	ok, err := Send(account, region, verbose, destination, message)
 	if !ok {
-		fmt.Printf("[ERROR]: failed to tag: %s", err)
+		fmt.Printf("[ERROR]: failed to send: %s", err)
 		os.Exit(254)
 	}
 	// success!!!
@@ -83,42 +80,42 @@ func main() {
 }
 
 // Login - login to aws ecr registry
-func Tag(account, region string, verbose bool, resources []string, tags map[string]string) (ok bool, err error) {
+func Send(account, region string, verbose bool, destination string, message string) (ok bool, err error) {
 
 	debugf("[DEBUG]: creating new session...\n")
-	svc := ec2.New(session.New(), &aws.Config{Region: aws.String(region)})
+	svc := sqs.New(session.New(), &aws.Config{Region: aws.String(region)})
 
-	debugf("[DEBUG]: creating tag(s) input...\n")
-	debugf("[DEBUG]: total tag pair(s): %d\n", len(tags))
-	counter := 0
-	ec2Tags := make([]*ec2.Tag, len(tags))
-	for key, value := range tags {
-		debugf("[DEBUG]: processing tag #%d: '%s'='%s'\n", counter, key, value)
-		ec2Tags[counter] = &ec2.Tag{
-			Key:   aws.String(key),
-			Value: aws.String(value),
-		}
-		counter++
+	debugf("[DEBUG]: creating message(s) input...\n")
+	debugf("[DEBUG]: total message input pair(s): %d\n", len(message))
+	params := &sqs.SendMessageInput{
+		MessageBody:  aws.String(message),     // Required
+		QueueUrl:     aws.String(destination), // Required
+		DelaySeconds: aws.Int64(1),
+		MessageAttributes: map[string]*sqs.MessageAttributeValue{
+			"Key": { // Required
+				DataType: aws.String("String"), // Required
+				BinaryListValues: [][]byte{
+					[]byte("PAYLOAD"), // Required
+					// More values...
+				},
+				BinaryValue: []byte("PAYLOAD"),
+				StringListValues: []*string{
+					aws.String("String"), // Required
+					// More values...
+				},
+				StringValue: aws.String("String"),
+			},
+			// More values...
+		},
 	}
-
-	ec2Resources := make([]*string, len(resources))
-	for pos, resource := range resources {
-		debugf("[DEBUG]: tagging resource: '%s'\n", resource)
-		ec2Resources[pos] = &resource
-	}
-
-	resp, err := svc.CreateTags(&ec2.CreateTagsInput{
-		Resources: ec2Resources,
-		Tags:      ec2Tags,
-	})
-
+	resp, err := svc.SendMessage(params)
 	debugf("[DEBUG]: response: %v\n", resp)
 
 	if err != nil {
 		return false, fmt.Errorf("Could not create tags for instance(s): '%s': %s\n", strings.Join(resources, " "), err)
 	}
 
-	debugf("Successfully tagged instance(s) '%s'\n", strings.Join(resources, " "))
+	debugf("Successfully sent message(s) '%s'\n", message)
 	return true, nil
 }
 

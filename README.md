@@ -1,7 +1,7 @@
 awscli
 ======
 
-[![Circle CI](https://circleci.com/gh/johnt337/pingdom.svg?style=svg)](https://circleci.com/gh/johnt337/awscli)
+[![Circle CI](https://circleci.com/gh/aidevops/pingdom.svg?style=svg)](https://circleci.com/gh/aidevops/awscli)
 
 ** THIS IS AN EXPERIMENT IN CONTAINER SIZE REDUCTION, USE AT YOUR OWN RISK. **
 Comparing image sizes and efficiency gained.....
@@ -162,29 +162,29 @@ Quick Start:
 
 - Setup environment
 
-  `mkdir -p awscli/src/github.com/johnt337`
+  `mkdir -p awscli/src/github.com/aidevops`
 
-  `git clone github.com/johnt337/awscli awscli/src/github.com/johnt337/awscli`
+  `git clone github.com/aidevops/awscli awscli/src/github.com/aidevops/awscli`
 
-  `cd github.com/johnt337/awscli awscli/src/github.com/johnt337/awscli && ./dev_setup.sh`
+  `cd github.com/aidevops/awscli awscli/src/github.com/aidevops/awscli && ./dev_setup.sh`
 
 
 
 - Build the build environment followed by the entire suite
 
-  `cd github.com/johnt337/awscli awscli/src/github.com/johnt337/awscli`
+  `cd github.com/aidevops/awscli awscli/src/github.com/aidevops/awscli`
 
   `make`
 
 - Build the `ecr_login` util+container
 
-  `cd github.com/johnt337/awscli awscli/src/github.com/johnt337/awscli`
+  `cd github.com/aidevops/awscli awscli/src/github.com/aidevops/awscli`
 
   `make build-ecr_login`
 
 - Build the `ec2_tag` util+container
 
-  `cd github.com/johnt337/awscli awscli/src/github.com/johnt337/awscli`
+  `cd github.com/aidevops/awscli awscli/src/github.com/aidevops/awscli`
 
   `make build-ec2_tag`
 
@@ -202,12 +202,12 @@ Running:
 
 - Run login similar to aws ecr get-login --region <region> --registry-ids <id1,id2,id3> 
 
-  `eval $(docker run --rm -it johnt337/ecr_login -account=$AWS_REGISTRY_ID)`
+  `eval $(docker run --rm -it aidevops/ecr_login -account=$AWS_REGISTRY_ID)`
 
 - Run login with the bundled docker
 
-  `docker run --rm -it -v $HOME/.docker:/root/.docker -v /var/run/docker.sock:/var/run/docker.sock -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY johnt337/ecr_login -account=$AWS_REGISTRY_ID -login`
+  `docker run --rm -it -v $HOME/.docker:/root/.docker -v /var/run/docker.sock:/var/run/docker.sock -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY aidevops/ecr_login -account=$AWS_REGISTRY_ID -login`
 
 - Run tag similar to aws ec2 create-tags --resource xxxxxx --tags  
 
-  `docker run -it --rm -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY johnt337/ec2_tag -verbose -account=$AWS_REGISTRY_ID -resources="i-XXXXXXXXX" -tags="hello=world,one=two,apple=orange,myfavorite.car=hello,docker=true,ecr=$DEFAULT_AWS_ECR"`
+  `docker run -it --rm -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY aidevops/ec2_tag -verbose -account=$AWS_REGISTRY_ID -resources="i-XXXXXXXXX" -tags="hello=world,one=two,apple=orange,myfavorite.car=hello,docker=true,ecr=$DEFAULT_AWS_ECR"`
