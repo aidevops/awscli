@@ -82,7 +82,7 @@ func main() {
 
 }
 
-// Login - login to aws ecr registry
+// Tag - tag to ec2 instance
 func Tag(account, region string, verbose bool, resources []string, tags map[string]string) (ok bool, err error) {
 
 	debugf("[DEBUG]: creating new session...\n")

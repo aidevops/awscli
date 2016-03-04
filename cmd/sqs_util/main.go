@@ -29,12 +29,11 @@ var verbose bool
 // main - log us in...
 func main() {
 	var (
-		account     string
-		region      string
-		destination string
-		message     string
-		verbose     bool
-		version     bool
+		account string
+		region  string
+		queue   string
+		message string
+		version bool
 	)
 
 	var empty string
@@ -42,7 +41,7 @@ func main() {
 	flag.StringVar(&region, "region", "us-east-1", "AWS region. E.g. -region=us-east-1")
 	flag.BoolVar(&verbose, "verbose", false, "be more verbose.....")
 	flag.BoolVar(&version, "version", false, "print version and exit")
-	flag.StringVar(&destination, "destination", "", "vault-register, consul-register, serviceN-register...")
+	flag.StringVar(&queue, "queue", "", "vault-registration, consul-registration, serviceN-registration...")
 	flag.StringVar(&message, "message", empty, "-tags 'foo=bar,bar=foo,hello=world'")
 	flag.Parse()
 
@@ -57,19 +56,14 @@ func main() {
 		os.Exit(255)
 	}
 
-	debugf("[DEBUG]: using destination(s): %s\n", destination)
-	if destination == "" || len(destination) < 3 {
-		fmt.Printf("sqs_util: missing or invalid destination(s): -destination='some-fancy-queue..', received: '%s'\n", resources)
+	debugf("[DEBUG]: using queue name(s): %s\n", queue)
+	if queue == "" || len(queue) < 3 {
+		fmt.Printf("sqs_util: missing or invalid queue(s): -queue='some-fancy-queue..', received: '%s'\n", queue)
 		os.Exit(255)
 	}
 
 	debugf("[DEBUG]: using region: %s\n", region)
-
-	debugf("[DEBUG]: raw input: %s\n", message)
-	for k, v := range m {
-		debugf("[DEBUG]: mapped: Key=%s,Value=%s\n", k, v)
-	}
-	ok, err := Send(account, region, verbose, destination, message)
+	ok, err := Send(account, region, verbose, queue, message)
 	if !ok {
 		fmt.Printf("[ERROR]: failed to send: %s", err)
 		os.Exit(254)
@@ -79,40 +73,51 @@ func main() {
 
 }
 
-// Login - login to aws ecr registry
-func Send(account, region string, verbose bool, destination string, message string) (ok bool, err error) {
+func GetQueueUrl(ses *session.Session, account, region, queue string) (string, error) {
+	svc := sqs.New(ses, &aws.Config{Region: aws.String(region)})
+	params := &sqs.GetQueueUrlInput{
+		QueueName:              aws.String(queue), // Required
+		QueueOwnerAWSAccountId: aws.String(account),
+	}
+	resp, err := svc.GetQueueUrl(params)
+	if err != nil {
+		// Print the error, cast err to awserr.Error to get the Code and
+		// Message from an error.
+		return "", fmt.Errorf("failed to get lookup queue by name '%s' %s", queue, err.Error())
+	}
+	return fmt.Sprintf("%s", *resp.QueueUrl), nil
+}
 
+// Send - send a messsage to aws sqs destination
+func Send(account, region string, verbose bool, queue string, message string) (ok bool, err error) {
+
+	ses := session.New()
+	queueURL, err := GetQueueUrl(ses, account, region, queue)
+	if err != nil {
+		return false, fmt.Errorf("[ERROR] lookup queue url for queue '%s': %s", queue, err.Error())
+	}
+
+	debugf("[DEBUG]: found url: '%s' for queue '%s'", queueURL, queue)
 	debugf("[DEBUG]: creating new session...\n")
-	svc := sqs.New(session.New(), &aws.Config{Region: aws.String(region)})
-
+	svc := sqs.New(ses, &aws.Config{Region: aws.String(region)})
 	debugf("[DEBUG]: creating message(s) input...\n")
 	debugf("[DEBUG]: total message input pair(s): %d\n", len(message))
 	params := &sqs.SendMessageInput{
-		MessageBody:  aws.String(message),     // Required
-		QueueUrl:     aws.String(destination), // Required
+		MessageBody:  aws.String(message),
+		QueueUrl:     aws.String(queueURL),
 		DelaySeconds: aws.Int64(1),
-		MessageAttributes: map[string]*sqs.MessageAttributeValue{
-			"Key": { // Required
-				DataType: aws.String("String"), // Required
-				BinaryListValues: [][]byte{
-					[]byte("PAYLOAD"), // Required
-					// More values...
-				},
-				BinaryValue: []byte("PAYLOAD"),
-				StringListValues: []*string{
-					aws.String("String"), // Required
-					// More values...
-				},
-				StringValue: aws.String("String"),
-			},
-			// More values...
-		},
+		// MessageAttributes: map[string]*sqs.MessageAttributeValue{
+		// 	"Message": {
+		// 		DataType:    aws.String("String"),
+		// 		StringValue: aws.String(message),
+		// 	},
+		// },
 	}
 	resp, err := svc.SendMessage(params)
 	debugf("[DEBUG]: response: %v\n", resp)
 
 	if err != nil {
-		return false, fmt.Errorf("Could not create tags for instance(s): '%s': %s\n", strings.Join(resources, " "), err)
+		return false, fmt.Errorf("Could not send message '%s' to queue '%s'@'%s': %s\n", message, queue, queueURL, err)
 	}
 
 	debugf("Successfully sent message(s) '%s'\n", message)
