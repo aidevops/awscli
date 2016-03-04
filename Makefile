@@ -176,7 +176,7 @@ run-ec2_tag: config
 	@echo "running bin/ec2_tag"
 	docker run -it --rm -i $(REGISTRY)/ec2_tag
 
-run-ec2_tag: config
+run-sqs_util: config
 	@echo "running bin/sqs_util"
 	docker run -it --rm -i $(REGISTRY)/sqs_util
 
