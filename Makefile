@@ -34,7 +34,7 @@ EC2_TAG_VERSION=$(shell grep -E 'Version =' ./cmd/ec2_tag/version.go | awk '{pri
 SQS_TAG=latest
 SQS_VERSION=$(shell grep -E 'Version =' ./cmd/sqs_util/version.go | awk '{print$$NF}' | sed 's@"@@g')
 
-build: godeps build-all
+build: build-all
 
 build-all:
 	@make build-awscli
@@ -135,7 +135,7 @@ bootstrap-test:
 
 godeps:
 	@echo "running godep"
-	godep save ./...
+	./go_get.sh
 
 clean:
 	@echo "running make clean"
