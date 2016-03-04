@@ -188,6 +188,12 @@ Quick Start:
 
   `make build-ec2_tag`
 
+- Build the `sqs_util` util+container
+
+  `cd github.com/aidevops/awscli awscli/src/github.com/aidevops/awscli`
+
+  `make build-sqs_util`
+
 - Build the `ecr_login` util only
 
   `make bin/ecr_login`
@@ -195,6 +201,10 @@ Quick Start:
 - Build the `ec2_tag` util only
 
   `make bin/ec2_tag`
+
+- Build the `sqs_util` util only
+
+  `make bin/sqs_util`
 
 
 Running:
@@ -211,3 +221,11 @@ Running:
 - Run tag similar to aws ec2 create-tags --resource xxxxxx --tags  
 
   `docker run -it --rm -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY aidevops/ec2_tag -verbose -account=$AWS_REGISTRY_ID -resources="i-XXXXXXXXX" -tags="hello=world,one=two,apple=orange,myfavorite.car=hello,docker=true,ecr=$DEFAULT_AWS_ECR"`
+
+- Run sqs similar to aws sqs send-message --queue-url ..... --message-body "hello" --message-attributes....
+
+  `docker run --rm -it -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY aidevops/sqs_util -account=012345678901 -verbose -queue=my-fav-queue -message=hello -attributes="hello=world,myfair=lady"`
+ 
+- Dump the sqs url and exit....
+
+  `docker run --rm -it -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY aidevops/sqs_util -account=012345678901 -queue=my-fav-queue -url`
