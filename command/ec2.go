@@ -7,8 +7,8 @@ import (
 
 	"github.com/mitchellh/cli"
 
-	"github.com/aidevops/awscli"
-	"github.com/aidevops/awscli/logger"
+	"github.com/johnt337/awscli"
+	"github.com/johnt337/awscli/logger"
 )
 
 // EC2Command -

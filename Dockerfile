@@ -24,4 +24,4 @@ RUN \
   go get golang.org/x/tools/cmd/cover && \
   rm -rf /var/cache/apk/*
 
-WORKDIR /go/src/github.com/aidevops/awscli
+WORKDIR /go/src/github.com/johnt337/awscli
