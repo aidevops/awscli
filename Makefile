@@ -62,14 +62,14 @@ build-sqs_util:
 	docker build -t awscli-build -f Dockerfile .
 	GO15VENDOREXPERIMENT=$(GO15VENDOREXPERIMENT) docker run --rm -v /var/run:/var/run -v $(MOUNT):/go/src/$(PROJ) --entrypoint=/bin/sh -i awscli-build -c "godep restore && make lint && make lint-check && make test/units && make docker/sqs_util "
 
-docker/awscli: $(SRC) config awscli.Dockerfile
+docker/awscli: $(SRC) awscli.Dockerfile
 	@echo "running make docker/awscli"
 	make bin/awscli
 	[ -d ./tmp ] || mkdir ./tmp && chmod 4777 ./tmp
 	docker build -t $(REGISTRY)/awscli:$(AWSCLI_VERSION) -f awscli.Dockerfile .
 	docker tag -f $(REGISTRY)/awscli:$(AWSCLI_VERSION) $(REGISTRY)/awscli:$(AWSCLI_TAG)
 
-docker/ecr_login: $(SRC) config ecr_login.Dockerfile
+docker/ecr_login: $(SRC) ecr_login.Dockerfile
 	@echo "running make docker/ecr_login"
 	make bin/ecr_login
 	[ -d ./tmp ] || mkdir ./tmp && chmod 4777 ./tmp
@@ -78,7 +78,7 @@ docker/ecr_login: $(SRC) config ecr_login.Dockerfile
 	docker build -t $(REGISTRY)/ecr_login:$(ECR_VERSION)-docker -f ecr_login_plus_docker.Dockerfile .
 	docker tag -f $(REGISTRY)/ecr_login:$(ECR_VERSION) $(REGISTRY)/ecr_login:$(ECR_TAG)
 
-docker/ec2_tag: $(SRC) config ec2_tag.Dockerfile
+docker/ec2_tag: $(SRC) ec2_tag.Dockerfile
 	@echo "running make docker/ec2_tag"
 	make bin/ec2_tag
 	[ -d ./tmp ] || mkdir ./tmp && chmod 4777 ./tmp
@@ -86,7 +86,7 @@ docker/ec2_tag: $(SRC) config ec2_tag.Dockerfile
 	docker build -t $(REGISTRY)/ec2_tag:$(EC2_TAG_VERSION) -f ec2_tag.Dockerfile .
 	docker tag -f $(REGISTRY)/ec2_tag:$(EC2_TAG_VERSION) $(REGISTRY)/ec2_tag:$(EC2_TAG)
 
-docker/sqs_util: $(SRC) config sqs_util.Dockerfile
+docker/sqs_util: $(SRC) sqs_util.Dockerfile
 	@echo "running make docker/sqs_util"
 	make bin/sqs_util
 	[ -d ./tmp ] || mkdir ./tmp && chmod 4777 ./tmp
