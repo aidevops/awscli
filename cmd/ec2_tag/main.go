@@ -55,13 +55,13 @@ func main() {
 
 	debugf("[DEBUG]: using account: %s\n", account)
 	if account == "" || len(account) < 12 {
-		fmt.Printf("ecr_login: missing or invalid account length: -account='1234556790123', received: '%s'\n", account)
+		fmt.Printf("ec2_tag: missing or invalid account length: -account='1234556790123', received: '%s'\n", account)
 		os.Exit(255)
 	}
 
 	debugf("[DEBUG]: using resource(s): %s\n", resources)
 	if resources == "" || len(resources) < 10 {
-		fmt.Printf("ecr_login: missing or invalid resource(s): -resources='i-86424106 i-864241.. i-864242..', received: '%s'\n", resources)
+		fmt.Printf("ec2_tag: missing or invalid resource(s): -resources='i-86424106 i-864241.. i-864242..', received: '%s'\n", resources)
 		os.Exit(255)
 	}
 
@@ -82,7 +82,7 @@ func main() {
 
 }
 
-// Login - login to aws ecr registry
+// Tag - tag to ec2 instance
 func Tag(account, region string, verbose bool, resources []string, tags map[string]string) (ok bool, err error) {
 
 	debugf("[DEBUG]: creating new session...\n")

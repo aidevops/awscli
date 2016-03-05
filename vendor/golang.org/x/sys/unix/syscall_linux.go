@@ -92,12 +92,23 @@ func Unlinkat(dirfd int, path string, flags int) error {
 
 //sys	utimes(path string, times *[2]Timeval) (err error)
 
-func Utimes(path string, tv []Timeval) (err error) {
+func Utimes(path string, tv []Timeval) error {
 	if tv == nil {
+		err := utimensat(AT_FDCWD, path, nil, 0)
+		if err != ENOSYS {
+			return err
+		}
 		return utimes(path, nil)
 	}
 	if len(tv) != 2 {
 		return EINVAL
+	}
+	var ts [2]Timespec
+	ts[0] = NsecToTimespec(TimevalToNsec(tv[0]))
+	ts[1] = NsecToTimespec(TimevalToNsec(tv[1]))
+	err := utimensat(AT_FDCWD, path, (*[2]Timespec)(unsafe.Pointer(&ts[0])), 0)
+	if err != ENOSYS {
+		return err
 	}
 	return utimes(path, (*[2]Timeval)(unsafe.Pointer(&tv[0])))
 }
@@ -895,6 +906,7 @@ func Getpgrp() (pid int) {
 //sysnb	Setpgid(pid int, pgid int) (err error)
 //sysnb	Setsid() (pid int, err error)
 //sysnb	Settimeofday(tv *Timeval) (err error)
+//sys	Setns(fd int, nstype int) (err error)
 
 // issue 1435.
 // On linux Setuid and Setgid only affects the current thread, not the process.

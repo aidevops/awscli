@@ -9,7 +9,7 @@ import (
 
 	"github.com/onsi/ginkgo/reporters"
 
-	"github.com/johnt337/awscli/logger"
+	"github.com/aidevops/awscli/logger"
 )
 
 var suite = "Logger Test Suite"

@@ -30,13 +30,17 @@ ECR_VERSION=$(shell grep -E 'Version =' ./cmd/ecr_login/version.go | awk '{print
 EC2_TAG=latest
 EC2_TAG_VERSION=$(shell grep -E 'Version =' ./cmd/ec2_tag/version.go | awk '{print$$NF}' | sed 's@"@@g')
 
+# SQS messaging
+SQS_TAG=latest
+SQS_VERSION=$(shell grep -E 'Version =' ./cmd/sqs_util/version.go | awk '{print$$NF}' | sed 's@"@@g')
 
-build: godeps build-all
+build: build-all
 
 build-all:
 	@make build-awscli
 	@make build-ecr_login
 	@make build-ec2_tag
+	@make build-sqs_util
 
 build-awscli:
 	@echo "running make build-awscli"
@@ -53,14 +57,19 @@ build-ec2_tag:
 	docker build -t awscli-build -f Dockerfile .
 	GO15VENDOREXPERIMENT=$(GO15VENDOREXPERIMENT) docker run --rm -v /var/run:/var/run -v $(MOUNT):/go/src/$(PROJ) --entrypoint=/bin/sh -i awscli-build -c "godep restore && make lint && make lint-check && make test/units && make docker/ec2_tag "
 
-docker/awscli: $(SRC) config awscli.Dockerfile
+build-sqs_util:
+	@echo "running make build-sqs_util"
+	docker build -t awscli-build -f Dockerfile .
+	GO15VENDOREXPERIMENT=$(GO15VENDOREXPERIMENT) docker run --rm -v /var/run:/var/run -v $(MOUNT):/go/src/$(PROJ) --entrypoint=/bin/sh -i awscli-build -c "godep restore && make lint && make lint-check && make test/units && make docker/sqs_util "
+
+docker/awscli: $(SRC) awscli.Dockerfile
 	@echo "running make docker/awscli"
 	make bin/awscli
 	[ -d ./tmp ] || mkdir ./tmp && chmod 4777 ./tmp
 	docker build -t $(REGISTRY)/awscli:$(AWSCLI_VERSION) -f awscli.Dockerfile .
 	docker tag -f $(REGISTRY)/awscli:$(AWSCLI_VERSION) $(REGISTRY)/awscli:$(AWSCLI_TAG)
 
-docker/ecr_login: $(SRC) config ecr_login.Dockerfile
+docker/ecr_login: $(SRC) ecr_login.Dockerfile
 	@echo "running make docker/ecr_login"
 	make bin/ecr_login
 	[ -d ./tmp ] || mkdir ./tmp && chmod 4777 ./tmp
@@ -69,13 +78,21 @@ docker/ecr_login: $(SRC) config ecr_login.Dockerfile
 	docker build -t $(REGISTRY)/ecr_login:$(ECR_VERSION)-docker -f ecr_login_plus_docker.Dockerfile .
 	docker tag -f $(REGISTRY)/ecr_login:$(ECR_VERSION) $(REGISTRY)/ecr_login:$(ECR_TAG)
 
-docker/ec2_tag: $(SRC) config ec2_tag.Dockerfile
-	@echo "running make docker/tag"
+docker/ec2_tag: $(SRC) ec2_tag.Dockerfile
+	@echo "running make docker/ec2_tag"
 	make bin/ec2_tag
 	[ -d ./tmp ] || mkdir ./tmp && chmod 4777 ./tmp
 	[ -d ./certs ] || cp -a /etc/ssl/certs .
 	docker build -t $(REGISTRY)/ec2_tag:$(EC2_TAG_VERSION) -f ec2_tag.Dockerfile .
 	docker tag -f $(REGISTRY)/ec2_tag:$(EC2_TAG_VERSION) $(REGISTRY)/ec2_tag:$(EC2_TAG)
+
+docker/sqs_util: $(SRC) sqs_util.Dockerfile
+	@echo "running make docker/sqs_util"
+	make bin/sqs_util
+	[ -d ./tmp ] || mkdir ./tmp && chmod 4777 ./tmp
+	[ -d ./certs ] || cp -a /etc/ssl/certs .
+	docker build -t $(REGISTRY)/sqs_util:$(SQS_VERSION) -f sqs_util.Dockerfile .
+	docker tag -f $(REGISTRY)/sqs_util:$(SQS_VERSION) $(REGISTRY)/sqs_util:$(SQS_TAG)
 
 docker/push:
 	docker push $(REGISTRY)/awscli:$(AWSCLI_VERSION)
@@ -85,11 +102,14 @@ docker/push:
 	docker push $(REGISTRY)/ecr_login:$(ECR_TAG)
 	docker push $(REGISTRY)/ec2_tag:$(EC2_TAG_VERSION)
 	docker push $(REGISTRY)/ec2_tag:$(EC2_TAG)
+	docker push $(REGISTRY)/sqs_util:$(SQS_VERSION)
+	docker push $(REGISTRY)/sqs_util:$(SQS_TAG)
 
 bin: $(SRC)
 	@make bin/awscli
 	@make bin/ecr_login
 	@make bin/ec2_tag
+	@make bin/sqs_util
 
 bin/awscli: $(SRC)
 	@echo "statically linking awscli"
@@ -103,6 +123,10 @@ bin/ec2_tag: $(SRC)
 	@echo "statically linking ec2_tag"
 	CGO_ENABLED=0 GOOS=linux godep go build -a -installsuffix cgo -ldflags '-w -X main.GitCommit=$(GIT_COMMIT)$(GIT_DIRTY)' -o bin/ec2_tag cmd/ec2_tag/*.go
 
+bin/sqs_util: $(SRC)
+	@echo "statically linking sqs_util"
+	CGO_ENABLED=0 GOOS=linux godep go build -a -installsuffix cgo -ldflags '-w -X main.GitCommit=$(GIT_COMMIT)$(GIT_DIRTY)' -o bin/sqs_util cmd/sqs_util/*.go
+
 bootstrap:
 	ginkgo bootstrap
 
@@ -111,7 +135,7 @@ bootstrap-test:
 
 godeps:
 	@echo "running godep"
-	godep save ./...
+	./go_get.sh
 
 clean:
 	@echo "running make clean"
@@ -123,7 +147,7 @@ distclean:
 	@echo "running make distclean"
 	rm -rf ./tmp ./certs
 	docker rm awscli-build run-awscli
-	docker rmi awscli-build $(REGISTRY)/awscli $(REGISTRY)/ecr_login $(REGISTRY)/ec2_tag
+	docker rmi awscli-build $(REGISTRY)/awscli $(REGISTRY)/ecr_login $(REGISTRY)/ec2_tag $(REGISTRY)/sqs_util
 
 interactive:
 	@echo "running make interactive build"
@@ -152,6 +176,10 @@ run-ec2_tag: config
 	@echo "running bin/ec2_tag"
 	docker run -it --rm -i $(REGISTRY)/ec2_tag
 
+run-sqs_util: config
+	@echo "running bin/sqs_util"
+	docker run -it --rm -i $(REGISTRY)/sqs_util
+
 test:
 	@echo "running test"
 	docker run -it --rm -v /var/run:/var/run -v $(MOUNT):/go/src/$(PROJ) --entrypoint=/bin/sh -i awscli-build -c "godep restore && make test/units"
@@ -167,4 +195,4 @@ test-cover: $(SRC)
 vet: $(SRC)
 	@for pkg in $(LINTS); do echo "vetting: $$pkg"; godep go vet $$pkg; done
 
-.PHONY: clean test test/units run-bin/awscli run-bin/ecr_login run-bin/ec2_tag interactive bootstrap bootstrap-test lint lint-check test-cover godeps docker/push
+.PHONY: clean test test/units run-bin/awscli run-bin/ecr_login run-bin/ec2_tag run-bin/sqs_util interactive bootstrap bootstrap-test lint lint-check test-cover godeps docker/push

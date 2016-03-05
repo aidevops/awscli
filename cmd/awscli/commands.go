@@ -7,7 +7,7 @@ import (
 
 	"github.com/mitchellh/cli"
 
-	"github.com/johnt337/awscli/command"
+	"github.com/aidevops/awscli/command"
 )
 
 // Commands - map for sub commands
