@@ -1,7 +1,7 @@
 awscli
 ======
 
-[![Circle CI](https://circleci.com/gh/aidevops/pingdom.svg?style=svg)](https://circleci.com/gh/aidevops/awscli)
+[![Circle CI](https://circleci.com/gh/aidevops/awscli.svg?style=svg)](https://circleci.com/gh/aidevops/awscli)
 
 ** THIS IS AN EXPERIMENT IN CONTAINER SIZE REDUCTION, USE AT YOUR OWN RISK. **
 Comparing image sizes and efficiency gained.....
