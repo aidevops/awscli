@@ -26,6 +26,7 @@ func main() {
 	var (
 		account    string
 		attributes string
+		build      bool
 		region     string
 		queue      string
 		message    string
@@ -35,13 +36,14 @@ func main() {
 
 	var empty string
 	flag.StringVar(&account, "account", "", "AWS account #. E.g. -account='1234556790123'")
+	flag.BoolVar(&build, "build", false, "build the url instead of looking it up against aws (less permission required)")
 	flag.StringVar(&region, "region", "us-east-1", "AWS region. E.g. -region=us-east-1")
 	flag.StringVar(&queue, "queue", "", "vault-registration, consul-registration, serviceN-registration...")
 	flag.StringVar(&message, "message", "", "-message 'hello world'")
 	flag.StringVar(&attributes, "attributes", empty, "-attributes 'foo=bar,bar=foo,hello=world'")
 	flag.BoolVar(&verbose, "verbose", false, "be more verbose.....")
 	flag.BoolVar(&version, "version", false, "print version and exit")
-	flag.BoolVar(&url, "url", false, "url the url of the queue and exit")
+	flag.BoolVar(&url, "url", false, "lookup the url for -queue='...' and exit")
 	flag.Parse()
 
 	if version == true {
@@ -62,7 +64,7 @@ func main() {
 	}
 
 	debugf("[DEBUG]: using region: %s\n", region)
-	ok, err := Send(account, region, verbose, queue, message, ToMap(attributes), url)
+	ok, err := Send(account, region, verbose, queue, message, ToMap(attributes), url, build)
 	if !ok {
 		fmt.Printf("[ERROR]: failed to send: %s", err)
 		os.Exit(253)
@@ -83,21 +85,32 @@ func GetQueueURL(ses *session.Session, account, region, queue string) (string, e
 	if err != nil {
 		// Print the error, cast err to awserr.Error to get the Code and
 		// Message from an error.
-		return "", fmt.Errorf("failed to get lookup queue by name '%s' %s\n", queue, err.Error())
+		return "", fmt.Errorf("failed to lookup queue by name '%s' %s\n", queue, err.Error())
 	}
 	return fmt.Sprintf("%s", *resp.QueueUrl), nil
 }
 
+// BuildQueueURL - Builds the url based on provided input instead of querying AWS sqs.
+func BuildQueueURL(account, region, queue string) string {
+	return fmt.Sprintf("https://sqs.%s.amazonaws.com/%s/%s", region, account, queue)
+}
+
 // Send - send a messsage to aws sqs destination
-func Send(account, region string, verbose bool, queue string, message string, attributes map[string]string, url bool) (ok bool, err error) {
+func Send(account, region string, verbose bool, queue string, message string, attributes map[string]string, url, build bool) (ok bool, err error) {
 
+	var queueURL string
 	ses := session.New()
-	queueURL, err := GetQueueURL(ses, account, region, queue)
-	if err != nil {
-		return false, fmt.Errorf("[ERROR] lookup queue url for queue '%s': %s\n", queue, err.Error())
-	}
 
-	debugf("[DEBUG]: found url: '%s' for queue '%s'\n", queueURL, queue)
+	if build {
+		queueURL = BuildQueueURL(account, region, queue)
+	} else {
+		queueURL, err = GetQueueURL(ses, account, region, queue)
+		if err != nil {
+			return false, fmt.Errorf("[ERROR] lookup queue url for queue '%s': %s\n", queue, err.Error())
+		}
+
+		debugf("[DEBUG]: found url: '%s' for queue '%s'\n", queueURL, queue)
+	}
 
 	if url {
 		fmt.Println(queueURL)
