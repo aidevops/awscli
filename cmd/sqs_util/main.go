@@ -3,6 +3,7 @@ package main
 
 // import - import our dependencies
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -18,6 +19,12 @@ import (
 // Unit - this application's name
 const Unit = "sqs_util"
 
+// VisibilityTimeout - http://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/AboutVT.html
+const VisibilityTimeout = 1
+
+// WaitTimeSeconds - The duration (in seconds) for which the call will wait for a message to arrive in the queue before returning.
+const WaitTimeSeconds = 10
+
 // verbose - control debug output
 var verbose bool
 
@@ -27,20 +34,26 @@ func main() {
 		account    string
 		attributes string
 		build      bool
+		count      int64
 		region     string
 		queue      string
 		message    string
+		send       bool
+		recv       bool
 		url        bool
 		version    bool
 	)
 
 	var empty string
 	flag.StringVar(&account, "account", "", "AWS account #. E.g. -account='1234556790123'")
-	flag.BoolVar(&build, "build", false, "build the url instead of looking it up against aws (less permission required)")
-	flag.StringVar(&region, "region", "us-east-1", "AWS region. E.g. -region=us-east-1")
-	flag.StringVar(&queue, "queue", "", "vault-registration, consul-registration, serviceN-registration...")
-	flag.StringVar(&message, "message", "", "-message 'hello world'")
 	flag.StringVar(&attributes, "attributes", empty, "-attributes 'foo=bar,bar=foo,hello=world'")
+	flag.BoolVar(&build, "build", false, "build the url instead of looking it up against aws (less permission required)")
+	flag.Int64Var(&count, "count", 1, "number of messages to retrieve from queue")
+	flag.StringVar(&message, "message", "", "-message 'hello world'")
+	flag.StringVar(&queue, "queue", "", "vault-registration, consul-registration, serviceN-registration...")
+	flag.StringVar(&region, "region", "us-east-1", "AWS region. E.g. -region=us-east-1")
+	flag.BoolVar(&send, "send", false, "send message")
+	flag.BoolVar(&recv, "recv", false, "receive messages")
 	flag.BoolVar(&verbose, "verbose", false, "be more verbose.....")
 	flag.BoolVar(&version, "version", false, "print version and exit")
 	flag.BoolVar(&url, "url", false, "lookup the url for -queue='...' and exit")
@@ -51,24 +64,51 @@ func main() {
 		os.Exit(0)
 	}
 
+	if !send && !recv {
+		fmt.Println("sqs_util: you need to specify either -send or -recv")
+		os.Exit(1)
+	}
+
+	if send && recv {
+		fmt.Println("sqs_util: send and recv are mutually exclusive")
+		os.Exit(1)
+	}
+
+	debugf("[DEBUG]: using count: %d\n", count)
+	if count < 0 || count > 10 {
+		fmt.Printf("sqs_util: invalid count valid values 1 - 10\n", account)
+		os.Exit(255)
+	}
+
 	debugf("[DEBUG]: using account: %s\n", account)
 	if account == "" || len(account) < 12 {
 		fmt.Printf("sqs_util: missing or invalid account length: -account='1234556790123', received: '%s'\n", account)
-		os.Exit(255)
+		os.Exit(254)
 	}
 
 	debugf("[DEBUG]: using queue name(s): %s\n", queue)
 	if queue == "" || len(queue) < 3 {
 		fmt.Printf("sqs_util: missing or invalid queue(s): -queue='some-fancy-queue..', received: '%s'\n", queue)
-		os.Exit(254)
+		os.Exit(253)
 	}
 
 	debugf("[DEBUG]: using region: %s\n", region)
-	ok, err := Send(account, region, verbose, queue, message, ToMap(attributes), url, build)
+
+	var ok bool
+	var err error
+	if send {
+		ok, err = Send(account, region, verbose, queue, message, ToMap(attributes), url, build)
+	}
+
+	if recv {
+		ok, err = Receive(account, region, verbose, queue, message, url, build, count)
+	}
+
 	if !ok {
-		fmt.Printf("[ERROR]: failed to send: %s", err)
+		fmt.Printf("[ERROR]: failed while processing request: %s", err)
 		os.Exit(253)
 	}
+
 	// success!!!
 	os.Exit(0)
 
@@ -119,7 +159,7 @@ func Send(account, region string, verbose bool, queue string, message string, at
 
 	debugf("[DEBUG]: creating new session...\n")
 	svc := sqs.New(ses, &aws.Config{Region: aws.String(region)})
-	debugf("[DEBUG]: creating message(s) input...\n")
+	debugf("[DEBUG]: creating send message(s) input...\n")
 
 	params := &sqs.SendMessageInput{
 		MessageBody:  aws.String(message),
@@ -141,6 +181,79 @@ func Send(account, region string, verbose bool, queue string, message string, at
 	}
 
 	debugf("[DEBUG]: Successfully sent message(s) '%s'\n", message)
+	return true, nil
+}
+
+// Receive - receive messsages from aws sqs destination
+func Receive(account, region string, verbose bool, queue string, message string, url, build bool, count int64) (ok bool, err error) {
+	var queueURL string
+	ses := session.New()
+
+	if build {
+		queueURL = BuildQueueURL(account, region, queue)
+	} else {
+		queueURL, err = GetQueueURL(ses, account, region, queue)
+		if err != nil {
+			return false, fmt.Errorf("[ERROR] lookup queue url for queue '%s': %s\n", queue, err.Error())
+		}
+
+		debugf("[DEBUG]: found url: '%s' for queue '%s'\n", queueURL, queue)
+	}
+
+	if url {
+		fmt.Println(queueURL)
+		os.Exit(0)
+	}
+
+	debugf("[DEBUG]: creating new session...\n")
+	svc := sqs.New(ses, &aws.Config{Region: aws.String(region)})
+	debugf("[DEBUG]: creating receive message(s) input...\n")
+
+	params := &sqs.ReceiveMessageInput{
+		QueueUrl:            aws.String(queueURL),
+		MaxNumberOfMessages: aws.Int64(count),
+		MessageAttributeNames: []*string{
+			aws.String("id"),         // Required
+			aws.String("node"),       // Required
+			aws.String("role"),       // Required
+			aws.String("instance"),   // Required
+			aws.String("registered"), // Required
+			// More values...
+		},
+		VisibilityTimeout: aws.Int64(VisibilityTimeout),
+		WaitTimeSeconds:   aws.Int64(WaitTimeSeconds),
+	}
+	resp, err := svc.ReceiveMessage(params)
+
+	total := len(resp.Messages)
+	for pos, msg := range resp.Messages {
+		debugf("[DEBUG]: [%d of %d] body: %s\n", pos+1, total, *msg.Body)
+		attributes := msg.MessageAttributes
+
+		if verbose {
+
+		}
+
+		if len(attributes) > 0 {
+			for k, v := range attributes {
+				debugf("[DEBUG]: %s=%s\n", k, *v.StringValue)
+			}
+		}
+
+		b, err := json.MarshalIndent(msg, "", " ")
+		if err != nil {
+			fmt.Printf("Error: %s", err)
+			return false, err
+		}
+		fmt.Println(string(b))
+
+	}
+
+	if err != nil {
+		return false, fmt.Errorf("Could not receive message(s) from queue '%s'@'%s': %s\n", message, queue, queueURL, err)
+	}
+
+	debugf("[DEBUG]: Successfully received %d message(s)\n", total)
 	return true, nil
 }
 
