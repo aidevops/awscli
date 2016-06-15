@@ -2,4 +2,5 @@
 /bin/ecr_login
 /bin/ec2_tag
 /bin/sqs_util
+/bin/s3_util
 /certs

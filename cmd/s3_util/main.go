@@ -33,7 +33,6 @@ func main() {
 		version bool
 	)
 
-	var empty string
 	flag.StringVar(&account, "account", "", "AWS account #. E.g. -account='1234556790123'")
 	flag.StringVar(&region, "region", "us-east-1", "AWS region. E.g. -region=us-east-1")
 	flag.StringVar(&bucket, "bucket", "", "mybucket-name...")
@@ -142,6 +141,11 @@ func Put(account, region string, verbose bool, bucket string, retry int64, src, 
 func Get(account, region string, verbose bool, bucket string, retry int64, src, dst string) (ok bool, err error) {
 	debugf("[DEBUG]: creating new session and s3manager object...\n")
 	svc := s3manager.NewDownloader(session.New(&aws.Config{Region: aws.String(region)}))
+
+	file, err := os.Open(src)
+	if err != nil {
+		return false, fmt.Errorf("Failed to create file '%s': %s\n", dst, err)
+	}
 
 	debugf("[DEBUG]: downloading...\n")
 	resp, err := svc.Download(file, &s3.GetObjectInput{
