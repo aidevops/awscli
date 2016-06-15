@@ -142,7 +142,7 @@ func Get(account, region string, verbose bool, bucket string, retry int64, src, 
 	debugf("[DEBUG]: creating new session and s3manager object...\n")
 	svc := s3manager.NewDownloader(session.New(&aws.Config{Region: aws.String(region)}))
 
-	file, err := os.Open(src)
+	file, err := os.Create(dst)
 	if err != nil {
 		return false, fmt.Errorf("Failed to create file '%s': %s\n", dst, err)
 	}
