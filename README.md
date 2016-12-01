@@ -231,4 +231,4 @@ Running:
   `docker run --rm -it -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY aidevops/sqs_util -account=012345678901 -queue=my-fav-queue -url`
 
 - Run s3 get...
-  `docker run --rm -v $PWD:/workspace -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY aidevops/s3_util -account=$AWS_ACCOUNT_ID -bucket=my_happy_bucket -get -src=/path/to/my/file.txt -dst=/workspace/file.txt`
+  `docker run --rm -v $PWD:/workspace -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY aidevops/s3_util -bucket=my_happy_bucket -get -src=/path/to/my/file.txt -dst=/workspace/file.txt`

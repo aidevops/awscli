@@ -115,7 +115,7 @@ func Tag(account, region string, verbose bool, resources []string, tags map[stri
 	debugf("[DEBUG]: response: %v\n", resp)
 
 	if err != nil {
-		return false, fmt.Errorf("Could not create tags for instance(s): '%s': %s\n", strings.Join(resources, " "), err)
+		return false, fmt.Errorf("Could not create tags for instance(s): '%s': %s", strings.Join(resources, " "), err)
 	}
 
 	debugf("Successfully tagged instance(s) '%s'\n", strings.Join(resources, " "))

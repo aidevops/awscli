@@ -11,7 +11,6 @@ LINTS ?= $(MAIN)
 COVER ?=
 SRC   := $(shell find . -name '*.go')
 MOUNT ?= $(shell pwd)
-GO15VENDOREXPERIMENT ?= 1
 REGISTRY ?= aidevops
 
 # Get the git commit
@@ -51,34 +50,34 @@ build-all:
 build-awscli:
 	@echo "running make build-awscli"
 	docker build -t awscli-build -f Dockerfile .
-	GO15VENDOREXPERIMENT=$(GO15VENDOREXPERIMENT) docker run --rm -v /var/run:/var/run -v $(MOUNT):/go/src/$(PROJ) --entrypoint=/bin/sh -i awscli-build -c "godep restore && make lint && make lint-check && make test/units && make docker/awscli "
+	docker run --rm -v /var/run:/var/run -v $(MOUNT):/go/src/$(PROJ) --entrypoint=/bin/sh -i awscli-build -c "godep restore && make lint && make lint-check && make test/units && make docker/awscli "
 
 build-ecr_login:
 	@echo "running make build-ecr_login"
 	docker build -t awscli-build -f Dockerfile .
-	GO15VENDOREXPERIMENT=$(GO15VENDOREXPERIMENT) docker run --rm -v /var/run:/var/run -v $(MOUNT):/go/src/$(PROJ) --entrypoint=/bin/sh -i awscli-build -c "godep restore && make lint && make lint-check && make test/units && make docker/ecr_login "
+	docker run --rm -v /var/run:/var/run -v $(MOUNT):/go/src/$(PROJ) --entrypoint=/bin/sh -i awscli-build -c "godep restore && make lint && make lint-check && make test/units && make docker/ecr_login "
 
 build-ec2_tag:
 	@echo "running make build-ec2_tag"
 	docker build -t awscli-build -f Dockerfile .
-	GO15VENDOREXPERIMENT=$(GO15VENDOREXPERIMENT) docker run --rm -v /var/run:/var/run -v $(MOUNT):/go/src/$(PROJ) --entrypoint=/bin/sh -i awscli-build -c "godep restore && make lint && make lint-check && make test/units && make docker/ec2_tag "
+	docker run --rm -v /var/run:/var/run -v $(MOUNT):/go/src/$(PROJ) --entrypoint=/bin/sh -i awscli-build -c "godep restore && make lint && make lint-check && make test/units && make docker/ec2_tag "
 
 build-sqs_util:
 	@echo "running make build-sqs_util"
 	docker build -t awscli-build -f Dockerfile .
-	GO15VENDOREXPERIMENT=$(GO15VENDOREXPERIMENT) docker run --rm -v /var/run:/var/run -v $(MOUNT):/go/src/$(PROJ) --entrypoint=/bin/sh -i awscli-build -c "godep restore && make lint && make lint-check && make test/units && make docker/sqs_util "
+	docker run --rm -v /var/run:/var/run -v $(MOUNT):/go/src/$(PROJ) --entrypoint=/bin/sh -i awscli-build -c "godep restore && make lint && make lint-check && make test/units && make docker/sqs_util "
 
 build-s3_util:
 	@echo "running make build-s3_util"
 	docker build -t awscli-build -f Dockerfile .
-	GO15VENDOREXPERIMENT=$(GO15VENDOREXPERIMENT) docker run --rm -v /var/run:/var/run -v $(MOUNT):/go/src/$(PROJ) --entrypoint=/bin/sh -i awscli-build -c "godep restore && make lint && make lint-check && make test/units && make docker/s3_util "
+	docker run --rm -v /var/run:/var/run -v $(MOUNT):/go/src/$(PROJ) --entrypoint=/bin/sh -i awscli-build -c "godep restore && make lint && make lint-check && make test/units && make docker/s3_util "
 
 docker/awscli: $(SRC) awscli.Dockerfile
 	@echo "running make docker/awscli"
 	make bin/awscli
 	[ -d ./tmp ] || mkdir ./tmp && chmod 4777 ./tmp
 	docker build -t $(REGISTRY)/awscli:$(AWSCLI_VERSION) -f awscli.Dockerfile .
-	docker tag -f $(REGISTRY)/awscli:$(AWSCLI_VERSION) $(REGISTRY)/awscli:$(AWSCLI_TAG)
+	docker tag $(REGISTRY)/awscli:$(AWSCLI_VERSION) $(REGISTRY)/awscli:$(AWSCLI_TAG)
 
 docker/ecr_login: $(SRC) ecr_login.Dockerfile
 	@echo "running make docker/ecr_login"
@@ -87,7 +86,7 @@ docker/ecr_login: $(SRC) ecr_login.Dockerfile
 	[ -d ./certs ] || cp -a /etc/ssl/certs .
 	docker build -t $(REGISTRY)/ecr_login:$(ECR_VERSION) -f ecr_login.Dockerfile .
 	docker build -t $(REGISTRY)/ecr_login:$(ECR_VERSION)-docker -f ecr_login_plus_docker.Dockerfile .
-	docker tag -f $(REGISTRY)/ecr_login:$(ECR_VERSION) $(REGISTRY)/ecr_login:$(ECR_TAG)
+	docker tag $(REGISTRY)/ecr_login:$(ECR_VERSION) $(REGISTRY)/ecr_login:$(ECR_TAG)
 
 docker/ec2_tag: $(SRC) ec2_tag.Dockerfile
 	@echo "running make docker/ec2_tag"
@@ -95,7 +94,7 @@ docker/ec2_tag: $(SRC) ec2_tag.Dockerfile
 	[ -d ./tmp ] || mkdir ./tmp && chmod 4777 ./tmp
 	[ -d ./certs ] || cp -a /etc/ssl/certs .
 	docker build -t $(REGISTRY)/ec2_tag:$(EC2_TAG_VERSION) -f ec2_tag.Dockerfile .
-	docker tag -f $(REGISTRY)/ec2_tag:$(EC2_TAG_VERSION) $(REGISTRY)/ec2_tag:$(EC2_TAG)
+	docker tag $(REGISTRY)/ec2_tag:$(EC2_TAG_VERSION) $(REGISTRY)/ec2_tag:$(EC2_TAG)
 
 docker/sqs_util: $(SRC) sqs_util.Dockerfile
 	@echo "running make docker/sqs_util"
@@ -103,7 +102,7 @@ docker/sqs_util: $(SRC) sqs_util.Dockerfile
 	[ -d ./tmp ] || mkdir ./tmp && chmod 4777 ./tmp
 	[ -d ./certs ] || cp -a /etc/ssl/certs .
 	docker build -t $(REGISTRY)/sqs_util:$(SQS_VERSION) -f sqs_util.Dockerfile .
-	docker tag -f $(REGISTRY)/sqs_util:$(SQS_VERSION) $(REGISTRY)/sqs_util:$(SQS_TAG)
+	docker tag $(REGISTRY)/sqs_util:$(SQS_VERSION) $(REGISTRY)/sqs_util:$(SQS_TAG)
 
 docker/s3_util: $(SRC) s3_util.Dockerfile
 	@echo "running make docker/s3_util"
@@ -111,7 +110,7 @@ docker/s3_util: $(SRC) s3_util.Dockerfile
 	[ -d ./tmp ] || mkdir ./tmp && chmod 4777 ./tmp
 	[ -d ./certs ] || cp -a /etc/ssl/certs .
 	docker build -t $(REGISTRY)/s3_util:$(S3_VERSION) -f s3_util.Dockerfile .
-	docker tag -f $(REGISTRY)/s3_util:$(S3_VERSION) $(REGISTRY)/s3_util:$(S3_TAG)
+	docker tag $(REGISTRY)/s3_util:$(S3_VERSION) $(REGISTRY)/s3_util:$(S3_TAG)
 
 docker/push:
 	docker push $(REGISTRY)/awscli:$(AWSCLI_VERSION)
