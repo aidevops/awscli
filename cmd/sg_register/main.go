@@ -1,10 +1,11 @@
 // Package main - sg_register application
 package main
 
-// import - import our dependencies
+// import - import our deptoPortencies
 import (
 	"flag"
 	"fmt"
+	"net"
 	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -17,13 +18,16 @@ const Unit = "sg_register"
 
 // verbose - control debug output
 var verbose bool
+var dryrun bool
 
 // main - log us in...
 func main() {
 	var (
 		ip         string
-		port       string
-		id         string
+		protocol   string
+		fromPort   int64
+		toPort     int64
+		sid        string
 		name       string
 		region     string
 		register   bool
@@ -31,13 +35,18 @@ func main() {
 		version    bool
 	)
 
-	flag.StringVar(&ip, "ip", "", "ip address to register")
-	flag.StringVar(&port, "port", "", "port to register access to...")
-	flag.StringVar(&id, "id", "", "security group id to work against (mutually exclusive to name)")
-	flag.StringVar(&name, "name", "", "security group name to work against (mutually exclusive to id")
+	flag.StringVar(&ip, "ip", "0.0.0.0/0", "ip address to register")
+	flag.StringVar(&protocol, "protocol", "tcp", "protocol to register 'tcp','udp','icmp','all'")
+	flag.Int64Var(&fromPort, "from-port", 443, "start port range to register access to...")
+	flag.Int64Var(&toPort, "to-port", -1, "end port range to register access to...")
+	flag.StringVar(&sid, "sg-id", "", "security group id to work against (mutually exclusive to name - not implemented)")
+	flag.StringVar(&name, "sg-name", "", "security group name to work against (mutually exclusive to sg-id)")
 	flag.StringVar(&region, "region", "us-east-1", "region sg lives in...")
+	flag.BoolVar(&register, "register", false, "register with security group ingress.....")
+	flag.BoolVar(&deregister, "deregister", false, "deregister with security group ingress.....")
 	flag.BoolVar(&verbose, "verbose", false, "be more verbose.....")
 	flag.BoolVar(&version, "version", false, "print version and exit")
+	flag.BoolVar(&dryrun, "dryrun", false, "perform dryrun and exit")
 	flag.Parse()
 
 	if version == true {
@@ -45,8 +54,8 @@ func main() {
 		os.Exit(0)
 	}
 
-	if len(id) <= 0 && len(name) <= 0 {
-		fmt.Println("sg_register: you need to specify either -id or -name")
+	if len(sid) <= 0 && len(name) <= 0 {
+		fmt.Println("sg_register: you need to specify either -sg-id or -name")
 		os.Exit(1)
 	}
 
@@ -61,9 +70,9 @@ func main() {
 	}
 
 	debugf("[DEBUG]: using ip address(s): %s\n", ip)
-	if ip == "" || len(ip) < 7 {
-		fmt.Printf("sg_register: missing or invalid ip: -ip='1.1.1.1..', received: '%s'\n", ip)
-		os.Exit(253)
+	if _, _, err := net.ParseCIDR(ip); err != nil {
+		fmt.Printf("sg_register: %s\n", err)
+		os.Exit(1)
 	}
 
 	debugf("[DEBUG]: using region: %s\n", region)
@@ -71,11 +80,11 @@ func main() {
 	var ok bool
 	var err error
 	if register {
-		ok, err = Register(region, verbose, ip, port, id, name)
+		ok, err = Register(region, ip, protocol, fromPort, toPort, sid, name)
 	}
 
 	if deregister {
-		ok, err = Deregister(region, verbose, ip, port, id, name)
+		ok, err = Deregister(region, ip, protocol, fromPort, toPort, sid, name)
 	}
 
 	if !ok {
@@ -83,81 +92,99 @@ func main() {
 		os.Exit(253)
 	}
 
-	// success!!!
+	fmt.Printf("success: '%s'", ip)
 	os.Exit(0)
 
 }
 
 // Register - register instance ip with security group
-func Register(region string, verbose bool, ip, port, id, name string) (ok bool, err error) {
+func Register(region, ip, protocol string, fromPort, toPort int64, sid, name string) (ok bool, err error) {
 	debugf("[DEBUG]: creating new session...\n")
 	svc := ec2.New(session.New(&aws.Config{Region: aws.String(region)}))
 
+	if sid == "" {
+		sid, err = LookupSGID(name, svc)
+		if err != nil {
+			fmt.Printf("[ERROR]: failed to lookup sg '%s' by name: %s", name, err)
+		}
+	}
+
 	params := &ec2.AuthorizeSecurityGroupIngressInput{
-		CidrIp:    aws.String("String"),
-		DryRun:    aws.Bool(true),
-		FromPort:  aws.Int64(1),
-		GroupId:   aws.String("String"),
-		GroupName: aws.String("String"),
-		IpPermissions: []*ec2.IpPermission{
-			{ // Required
-				FromPort:   aws.Int64(1),
-				IpProtocol: aws.String("String"),
-				IpRanges: []*ec2.IpRange{
-					{ // Required
-						CidrIp: aws.String("String"),
-					},
-					// More values...
-				},
-				PrefixListIds: []*ec2.PrefixListId{
-					{ // Required
-						PrefixListId: aws.String("String"),
-					},
-					// More values...
-				},
-				ToPort: aws.Int64(1),
-				UserIdGroupPairs: []*ec2.UserIdGroupPair{
-					{ // Required
-						GroupId:       aws.String("String"),
-						GroupName:     aws.String("String"),
-						PeeringStatus: aws.String("String"),
-						UserId:        aws.String("String"),
-						VpcId:         aws.String("String"),
-						VpcPeeringConnectionId: aws.String("String"),
-					},
-					// More values...
-				},
-			},
-			// More values...
-		},
-		IpProtocol:                 aws.String("String"),
-		SourceSecurityGroupName:    aws.String("String"),
-		SourceSecurityGroupOwnerId: aws.String("String"),
-		ToPort: aws.Int64(1),
+		CidrIp:     aws.String(ip),
+		DryRun:     aws.Bool(dryrun),
+		GroupId:    aws.String(sid),
+		IpProtocol: aws.String(protocol),
+		ToPort:     aws.Int64(toPort),
+		FromPort:   aws.Int64(fromPort),
 	}
 	debugf("[DEBUG]: registering...\n")
 	resp, err := svc.AuthorizeSecurityGroupIngress(params)
 	debugf("[DEBUG]: response: %v\n", resp)
 
 	if err != nil {
-		// Print the error, cast err to awserr.Error to get the Code and
-		// Message from an error.
-		fmt.Println(err.Error())
 		return false, err
 	}
 
-	// Pretty-print the response data.
-	fmt.Println(resp)
 	return true, nil
+}
+
+// LookupSGID - Lookup security group by name, return its id
+func LookupSGID(name string, svc *ec2.EC2) (sid string, err error) {
+	params := &ec2.DescribeSecurityGroupsInput{
+		DryRun: aws.Bool(dryrun),
+		Filters: []*ec2.Filter{
+			{
+				Name: aws.String("group-name"),
+				Values: []*string{
+					aws.String(name),
+				},
+			},
+		},
+	}
+	resp, err := svc.DescribeSecurityGroups(params)
+
+	if err != nil {
+		return sid, err
+	}
+
+	// read the first one and exit
+	for _, res := range resp.SecurityGroups {
+		sid = *res.GroupId
+		break
+	}
+	return sid, err
 }
 
 // Deregister - deregister instance ip from security group
-func Deregister(region string, verbose bool, ip, port, id, name string) (ok bool, err error) {
-	debugf("[DEBUG]: creating new session and s3manager object...\n")
+func Deregister(region, ip, protocol string, fromPort, toPort int64, sid, name string) (ok bool, err error) {
+	debugf("[DEBUG]: creating new session...\n")
+	svc := ec2.New(session.New(&aws.Config{Region: aws.String(region)}))
+
+	if sid == "" {
+		sid, err = LookupSGID(name, svc)
+		if err != nil {
+			fmt.Printf("[ERROR]: failed to lookup sg '%s' by name: %s", name, err)
+		}
+	}
+
+	params := &ec2.RevokeSecurityGroupIngressInput{
+		CidrIp:     aws.String(ip),
+		DryRun:     aws.Bool(dryrun),
+		GroupId:    aws.String(sid),
+		IpProtocol: aws.String(protocol),
+		ToPort:     aws.Int64(toPort),
+		FromPort:   aws.Int64(fromPort),
+	}
+	debugf("[DEBUG]: deregistering...\n")
+	resp, err := svc.RevokeSecurityGroupIngress(params)
+	debugf("[DEBUG]: response: %v\n", resp)
+
+	if err != nil {
+		return false, err
+	}
+
 	return true, nil
 }
-
-// helper functions....
 
 // debugf - print to stdout if verbose is enabled....
 func debugf(format string, args ...interface{}) {
@@ -166,7 +193,7 @@ func debugf(format string, args ...interface{}) {
 	}
 }
 
-// versionInfo - vendoring version info
+// versionInfo - vtoPortoring version info
 func versionInfo() string {
 	return fmt.Sprintf("%s v%s.%s (%s)", Unit, Version, VersionPrerelease, GitCommit)
 }
