@@ -37,6 +37,9 @@ SQS_VERSION=$(shell grep -E 'Version =' ./cmd/sqs_util/version.go | awk '{print$
 S3_TAG=latest
 S3_VERSION=$(shell grep -E 'Version =' ./cmd/s3_util/version.go | awk '{print$$NF}' | sed 's@"@@g')
 
+# SG registration
+SG_REGISTER_TAG=latest
+SG_REGISTER_VERSION=$(shell grep -E 'Version =' ./cmd/sg_register/version.go | awk '{print$$NF}' | sed 's@"@@g')
 
 build: build-all
 
@@ -46,6 +49,7 @@ build-all:
 	@make build-ec2_tag
 	@make build-sqs_util
 	@make build-s3_util
+	@make build-sg_register
 
 build-awscli:
 	@echo "running make build-awscli"
@@ -71,6 +75,11 @@ build-s3_util:
 	@echo "running make build-s3_util"
 	docker build -t awscli-build -f Dockerfile .
 	docker run --rm -v /var/run:/var/run -v $(MOUNT):/go/src/$(PROJ) --entrypoint=/bin/sh -i awscli-build -c "godep restore && make lint && make lint-check && make test/units && make docker/s3_util "
+
+build-sg_register:
+	@echo "running make build-sg_register"
+	docker build -t awscli-build -f Dockerfile .
+	docker run --rm -v /var/run:/var/run -v $(MOUNT):/go/src/$(PROJ) --entrypoint=/bin/sh -i awscli-build -c "godep restore && make lint && make lint-check && make test/units && make docker/sg_register "
 
 docker/awscli: $(SRC) awscli.Dockerfile
 	@echo "running make docker/awscli"
@@ -112,6 +121,14 @@ docker/s3_util: $(SRC) s3_util.Dockerfile
 	docker build -t $(REGISTRY)/s3_util:$(S3_VERSION) -f s3_util.Dockerfile .
 	docker tag $(REGISTRY)/s3_util:$(S3_VERSION) $(REGISTRY)/s3_util:$(S3_TAG)
 
+docker/sg_register: $(SRC) sg_register.Dockerfile
+	@echo "running make docker/sg_register"
+	make bin/sg_register
+	[ -d ./tmp ] || mkdir ./tmp && chmod 4777 ./tmp
+	[ -d ./certs ] || cp -a /etc/ssl/certs .
+	docker build -t $(REGISTRY)/sg_register:$(SG_REGISTER_VERSION) -f sg_register.Dockerfile .
+	docker tag $(REGISTRY)/sg_register:$(SG_REGISTER_VERSION) $(REGISTRY)/sg_register:$(SG_REGISTER_TAG)
+
 docker/push:
 	docker push $(REGISTRY)/awscli:$(AWSCLI_VERSION)
 	docker push $(REGISTRY)/awscli:$(AWSCLI_TAG)
@@ -124,12 +141,16 @@ docker/push:
 	docker push $(REGISTRY)/sqs_util:$(SQS_TAG)
 	docker push $(REGISTRY)/s3_util:$(S3_VERSION)
 	docker push $(REGISTRY)/s3_util:$(S3_TAG)
+	docker push $(REGISTRY)/sg_register:$(SG_REGISTER_VERSION)
+	docker push $(REGISTRY)/sg_register:$(SG_REGISTER_TAG)
+
 bin: $(SRC)
 	@make bin/awscli
 	@make bin/ecr_login
 	@make bin/ec2_tag
 	@make bin/sqs_util
 	@make bin/s3_util
+	@make bin/sg_register
 
 bin/awscli: $(SRC)
 	@echo "statically linking awscli"
@@ -151,6 +172,10 @@ bin/s3_util: $(SRC)
 	@echo "statically linking s3_util"
 	CGO_ENABLED=0 GOOS=linux godep go build -a -installsuffix cgo -ldflags '-w -X main.GitCommit=$(GIT_COMMIT)$(GIT_DIRTY)' -o bin/s3_util cmd/s3_util/*.go
 
+bin/sg_register: $(SRC)
+	@echo "statically linking sg_register"
+	CGO_ENABLED=0 GOOS=linux godep go build -a -installsuffix cgo -ldflags '-w -X main.GitCommit=$(GIT_COMMIT)$(GIT_DIRTY)' -o bin/sg_register cmd/sg_register/*.go
+
 bootstrap:
 	ginkgo bootstrap
 
@@ -171,7 +196,7 @@ distclean:
 	@echo "running make distclean"
 	rm -rf ./tmp ./certs
 	docker rm awscli-build run-awscli
-	docker rmi awscli-build $(REGISTRY)/awscli $(REGISTRY)/ecr_login $(REGISTRY)/ec2_tag $(REGISTRY)/sqs_util $(REGISTRY)/s3_util
+	docker rmi awscli-build $(REGISTRY)/awscli $(REGISTRY)/ecr_login $(REGISTRY)/ec2_tag $(REGISTRY)/sqs_util $(REGISTRY)/s3_util $(REGISTRY)/sg_register
 
 interactive:
 	@echo "running make interactive build"
@@ -208,6 +233,10 @@ run-s3_util: config
 	@echo "running bin/s3_util"
 	docker run -it --rm -i $(REGISTRY)/s3_util
 
+run-sg_register: config
+	@echo "running bin/sg_register"
+	docker run -it --rm -i $(REGISTRY)/sg_register
+
 test:
 	@echo "running test"
 	docker run -it --rm -v /var/run:/var/run -v $(MOUNT):/go/src/$(PROJ) --entrypoint=/bin/sh -i awscli-build -c "godep restore && make test/units"
@@ -223,4 +252,4 @@ test-cover: $(SRC)
 vet: $(SRC)
 	@for pkg in $(LINTS); do echo "vetting: $$pkg"; godep go vet $$pkg; done
 
-.PHONY: clean test test/units run-bin/awscli run-bin/ecr_login run-bin/ec2_tag run-bin/sqs_util run-bin/s3_util interactive bootstrap bootstrap-test lint lint-check test-cover godeps docker/push
+.PHONY: clean test test/units run-bin/awscli run-bin/ecr_login run-bin/ec2_tag run-bin/sqs_util run-bin/s3_util run-bin/sg_register interactive bootstrap bootstrap-test lint lint-check test-cover godeps docker/push
