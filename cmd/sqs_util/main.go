@@ -125,7 +125,7 @@ func GetQueueURL(ses *session.Session, account, region, queue string) (string, e
 	if err != nil {
 		// Print the error, cast err to awserr.Error to get the Code and
 		// Message from an error.
-		return "", fmt.Errorf("failed to lookup queue by name '%s' %s\n", queue, err.Error())
+		return "", fmt.Errorf("failed to lookup queue by name '%s' %s", queue, err.Error())
 	}
 	return fmt.Sprintf("%s", *resp.QueueUrl), nil
 }
@@ -146,7 +146,7 @@ func Send(account, region string, verbose bool, queue string, message string, at
 	} else {
 		queueURL, err = GetQueueURL(ses, account, region, queue)
 		if err != nil {
-			return false, fmt.Errorf("[ERROR] lookup queue url for queue '%s': %s\n", queue, err.Error())
+			return false, fmt.Errorf("[ERROR] lookup queue url for queue '%s': %s", queue, err.Error())
 		}
 
 		debugf("[DEBUG]: found url: '%s' for queue '%s'\n", queueURL, queue)
@@ -177,7 +177,7 @@ func Send(account, region string, verbose bool, queue string, message string, at
 	debugf("[DEBUG]: response: %v\n", resp)
 
 	if err != nil {
-		return false, fmt.Errorf("Could not send message '%s' to queue '%s'@'%s': %s\n", message, queue, queueURL, err)
+		return false, fmt.Errorf("Could not send message '%s' to queue '%s'@'%s': %s", message, queue, queueURL, err)
 	}
 
 	debugf("[DEBUG]: Successfully sent message(s) '%s'\n", message)
@@ -194,7 +194,7 @@ func Receive(account, region string, verbose bool, queue string, message string,
 	} else {
 		queueURL, err = GetQueueURL(ses, account, region, queue)
 		if err != nil {
-			return false, fmt.Errorf("[ERROR] lookup queue url for queue '%s': %s\n", queue, err.Error())
+			return false, fmt.Errorf("[ERROR] lookup queue url for queue '%s': %s", queue, err.Error())
 		}
 
 		debugf("[DEBUG]: found url: '%s' for queue '%s'\n", queueURL, queue)
@@ -250,7 +250,7 @@ func Receive(account, region string, verbose bool, queue string, message string,
 	}
 
 	if err != nil {
-		return false, fmt.Errorf("Could not receive message(s) from queue '%s'@'%s': %s\n", message, queue, queueURL, err)
+		return false, fmt.Errorf("Could not receive message(s) from queue '%s'@'%s': %s", message, queue, queueURL, err)
 	}
 
 	debugf("[DEBUG]: Successfully received %d message(s)\n", total)

@@ -231,4 +231,12 @@ Running:
   `docker run --rm -it -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY aidevops/sqs_util -account=012345678901 -queue=my-fav-queue -url`
 
 - Run s3 get...
-  `docker run --rm -v $PWD:/workspace -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY aidevops/s3_util -account=$AWS_ACCOUNT_ID -bucket=my_happy_bucket -get -src=/path/to/my/file.txt -dst=/workspace/file.txt`
+  `docker run --rm -v $PWD:/workspace -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY aidevops/s3_util -bucket=my_happy_bucket -get -src=/path/to/my/file.txt -dst=/workspace/file.txt`
+
+- Register a cidr block from a named security group
+
+  `docker run --rm -it -e AWS_REGION=$AWS_REGION -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY aidevops/sg_register:0.0.1 -sg-name=mygroup -register -ip 127.0.0.1/32 -from-port 443 -to-port 443`
+
+- Deregister a cidr block from a named security group
+
+  `docker run --rm -it -e AWS_REGION=$AWS_REGION -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY aidevops/sg_register:0.0.1 -sg-name=mygroup -deregister -ip 127.0.0.1/32 -from-port 443 -to-port 443`

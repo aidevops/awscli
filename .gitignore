@@ -3,4 +3,5 @@
 /bin/ec2_tag
 /bin/sqs_util
 /bin/s3_util
+/bin/sg_register
 /certs

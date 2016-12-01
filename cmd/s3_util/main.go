@@ -22,7 +22,6 @@ var verbose bool
 // main - log us in...
 func main() {
 	var (
-		account string
 		region  string
 		bucket  string
 		retry   int64
@@ -33,7 +32,6 @@ func main() {
 		version bool
 	)
 
-	flag.StringVar(&account, "account", "", "AWS account #. E.g. -account='1234556790123'")
 	flag.StringVar(&region, "region", "us-east-1", "AWS region. E.g. -region=us-east-1")
 	flag.StringVar(&bucket, "bucket", "", "mybucket-name...")
 	flag.Int64Var(&retry, "retry", 3, "number of times to attempt the operation - not implemented")
@@ -66,12 +64,6 @@ func main() {
 		os.Exit(255)
 	}
 
-	debugf("[DEBUG]: using account: %s\n", account)
-	if account == "" || len(account) < 12 {
-		fmt.Printf("s3_util: missing or invalid account length: -account='1234556790123', received: '%s'\n", account)
-		os.Exit(254)
-	}
-
 	debugf("[DEBUG]: using bucket name(s): %s\n", bucket)
 	if bucket == "" || len(bucket) < 3 {
 		fmt.Printf("s3_util: missing or invalid bucket: -bucket='some-fancy-bucket..', received: '%s'\n", bucket)
@@ -83,11 +75,11 @@ func main() {
 	var ok bool
 	var err error
 	if put {
-		ok, err = Put(account, region, verbose, bucket, retry, src, dst)
+		ok, err = Put(region, verbose, bucket, retry, src, dst)
 	}
 
 	if get {
-		ok, err = Get(account, region, verbose, bucket, retry, src, dst)
+		ok, err = Get(region, verbose, bucket, retry, src, dst)
 	}
 
 	if !ok {
@@ -101,10 +93,10 @@ func main() {
 }
 
 // Put - place a file in aws s3
-func Put(account, region string, verbose bool, bucket string, retry int64, src, dst string) (ok bool, err error) {
+func Put(region string, verbose bool, bucket string, retry int64, src, dst string) (ok bool, err error) {
 	file, err := os.Open(src)
 	if err != nil {
-		return false, fmt.Errorf("Failed to open source file '%s': %s\n", src, err)
+		return false, fmt.Errorf("failed to open source file '%s': %s", src, err)
 	}
 
 	// Not required, but you could zip the file before uploading it
@@ -130,7 +122,7 @@ func Put(account, region string, verbose bool, bucket string, retry int64, src, 
 	debugf("[DEBUG]: response: %v\n", resp)
 
 	if err != nil {
-		return false, fmt.Errorf("Could not put file '%s' into bucket '%s:%s': %s\n", src, bucket, dst, err)
+		return false, fmt.Errorf("Could not put file '%s' into bucket '%s:%s': %s", src, bucket, dst, err)
 	}
 
 	debugf("[DEBUG]: Successfully placed file(s) '%s' into '%s'\n", src, resp.Location)
@@ -138,13 +130,13 @@ func Put(account, region string, verbose bool, bucket string, retry int64, src, 
 }
 
 // Get - Get file from aws s3
-func Get(account, region string, verbose bool, bucket string, retry int64, src, dst string) (ok bool, err error) {
+func Get(region string, verbose bool, bucket string, retry int64, src, dst string) (ok bool, err error) {
 	debugf("[DEBUG]: creating new session and s3manager object...\n")
 	svc := s3manager.NewDownloader(session.New(&aws.Config{Region: aws.String(region)}))
 
 	file, err := os.Create(dst)
 	if err != nil {
-		return false, fmt.Errorf("Failed to create file '%s': %s\n", dst, err)
+		return false, fmt.Errorf("Failed to create file '%s': %s", dst, err)
 	}
 
 	debugf("[DEBUG]: downloading...\n")
@@ -155,7 +147,7 @@ func Get(account, region string, verbose bool, bucket string, retry int64, src, 
 	debugf("[DEBUG]: response: %v\n", resp)
 
 	if err != nil {
-		return false, fmt.Errorf("Could not get file '%s' from bucket '%s:%s': %s\n", dst, bucket, src, err)
+		return false, fmt.Errorf("Could not get file '%s' from bucket '%s:%s': %s", dst, bucket, src, err)
 	}
 
 	debugf("[DEBUG]: Successfully retrieved file(s) '%s' from '%s%s' - %d\n", dst, bucket, src, resp)
