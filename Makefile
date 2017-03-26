@@ -4,14 +4,14 @@ MAKEFLAGS  += --no-builtin-rules
 .DELETE_ON_ERROR:
 
 ARGS  ?= -v -race
-PROJ  ?= github.com/aidevops/awscli
+PROJ  ?= github.com/johnt337/awscli
 MAIN  ?= $(shell go list ./... | grep -v /vendor/)
 TESTS ?= $(MAIN) -cover
 LINTS ?= $(MAIN)
 COVER ?=
 SRC   := $(shell find . -name '*.go')
 MOUNT ?= $(shell pwd)
-REGISTRY ?= aidevops
+REGISTRY ?= johnt337
 
 # Get the git commit
 GIT_COMMIT=$(shell git rev-parse HEAD)

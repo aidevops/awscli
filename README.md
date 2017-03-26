@@ -1,7 +1,7 @@
 awscli
 ======
 
-[![Circle CI](https://circleci.com/gh/aidevops/awscli.svg?style=svg)](https://circleci.com/gh/aidevops/awscli)
+[![Circle CI](https://circleci.com/gh/johnt337/awscli.svg?style=svg)](https://circleci.com/gh/johnt337/awscli)
 
 ** THIS IS AN EXPERIMENT IN CONTAINER SIZE REDUCTION, USE AT YOUR OWN RISK. **
 Comparing image sizes and efficiency gained.....
@@ -43,7 +43,7 @@ WORKDIR /root
 #
 # VERSION               0.0.1
 
-FROM aidevops/awscli:0.0.1
+FROM johnt337/awscli:0.0.1
 MAINTAINER John Torres <john.torres@pearson.com>
 
 # install tagging script
@@ -99,7 +99,7 @@ CMD []
 #
 # VERSION               0.0.2
 
-FROM aidevops/awscli:0.0.2
+FROM johnt337/awscli:0.0.2
 MAINTAINER John Torres <john.torres@pearson.com>
 
 # install tagging script
@@ -162,35 +162,35 @@ Quick Start:
 
 - Setup environment
 
-  `mkdir -p awscli/src/github.com/aidevops`
+  `mkdir -p awscli/src/github.com/johnt337`
 
-  `git clone github.com/aidevops/awscli awscli/src/github.com/aidevops/awscli`
+  `git clone github.com/johnt337/awscli awscli/src/github.com/johnt337/awscli`
 
-  `cd github.com/aidevops/awscli awscli/src/github.com/aidevops/awscli && ./dev_setup.sh`
+  `cd github.com/johnt337/awscli awscli/src/github.com/johnt337/awscli && ./dev_setup.sh`
 
 
 
 - Build the build environment followed by the entire suite
 
-  `cd github.com/aidevops/awscli awscli/src/github.com/aidevops/awscli`
+  `cd github.com/johnt337/awscli awscli/src/github.com/johnt337/awscli`
 
   `make`
 
 - Build the `ecr_login` util+container
 
-  `cd github.com/aidevops/awscli awscli/src/github.com/aidevops/awscli`
+  `cd github.com/johnt337/awscli awscli/src/github.com/johnt337/awscli`
 
   `make build-ecr_login`
 
 - Build the `ec2_tag` util+container
 
-  `cd github.com/aidevops/awscli awscli/src/github.com/aidevops/awscli`
+  `cd github.com/johnt337/awscli awscli/src/github.com/johnt337/awscli`
 
   `make build-ec2_tag`
 
 - Build the `sqs_util` util+container
 
-  `cd github.com/aidevops/awscli awscli/src/github.com/aidevops/awscli`
+  `cd github.com/johnt337/awscli awscli/src/github.com/johnt337/awscli`
 
   `make build-sqs_util`
 
@@ -212,19 +212,19 @@ Running:
 
 - Run login similar to aws ecr get-login --region <region> --registry-ids <id1,id2,id3> 
 
-  `eval $(docker run --rm -it aidevops/ecr_login -account=$AWS_REGISTRY_ID)`
+  `eval $(docker run --rm -it johnt337/ecr_login -account=$AWS_REGISTRY_ID)`
 
 - Run login with the bundled docker
 
-  `docker run --rm -it -v $HOME/.docker:/root/.docker -v /var/run/docker.sock:/var/run/docker.sock -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY aidevops/ecr_login -account=$AWS_REGISTRY_ID -login`
+  `docker run --rm -it -v $HOME/.docker:/root/.docker -v /var/run/docker.sock:/var/run/docker.sock -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY johnt337/ecr_login -account=$AWS_REGISTRY_ID -login`
 
 - Run tag similar to aws ec2 create-tags --resource xxxxxx --tags  
 
-  `docker run -it --rm -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY aidevops/ec2_tag -verbose -account=$AWS_REGISTRY_ID -resources="i-XXXXXXXXX" -tags="hello=world,one=two,apple=orange,myfavorite.car=hello,docker=true,ecr=$DEFAULT_AWS_ECR"`
+  `docker run -it --rm -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY johnt337/ec2_tag -verbose -account=$AWS_REGISTRY_ID -resources="i-XXXXXXXXX" -tags="hello=world,one=two,apple=orange,myfavorite.car=hello,docker=true,ecr=$DEFAULT_AWS_ECR"`
 
 - Run sqs similar to aws sqs send-message --queue-url ..... --message-body "hello" --message-attributes....
 
-  `docker run --rm -it -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY aidevops/sqs_util -account=012345678901 -verbose -queue=my-fav-queue -message=hello -attributes="hello=world,myfair=lady"`
+  `docker run --rm -it -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY johnt337/sqs_util -account=012345678901 -verbose -queue=my-fav-queue -message=hello -attributes="hello=world,myfair=lady"`
  
 - Dump the sqs url and exit....
 
@@ -240,3 +240,4 @@ Running:
 - Deregister a cidr block from a named security group
 
   `docker run --rm -it -e AWS_REGION=$AWS_REGION -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY aidevops/sg_register:0.0.1 -sg-name=mygroup -deregister -ip 127.0.0.1/32 -from-port 443 -to-port 443`
+
