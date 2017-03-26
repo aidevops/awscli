@@ -1,7 +1,7 @@
 // Package main - sg_register application
 package main
 
-// import - import our deptoPortencies
+// import - import our dependencies
 import (
 	"flag"
 	"fmt"
@@ -193,7 +193,7 @@ func debugf(format string, args ...interface{}) {
 	}
 }
 
-// versionInfo - vtoPortoring version info
+// versionInfo - return version info
 func versionInfo() string {
 	return fmt.Sprintf("%s v%s.%s (%s)", Unit, Version, VersionPrerelease, GitCommit)
 }
